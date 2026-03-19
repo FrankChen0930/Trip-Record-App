@@ -1,6 +1,6 @@
 {
-  "name": "2026 環島紀錄器",
-  "short_name": "環島App",
+  "name": "旅遊紀錄器",
+  "short_name": "旅遊紀錄",
   "description": "公路旅行數位紀錄資料庫",
   "start_url": "/",
   "display": "standalone",
