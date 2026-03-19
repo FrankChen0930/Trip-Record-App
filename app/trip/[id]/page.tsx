@@ -129,25 +129,34 @@ export default function TripMasterPage() {
 
       <div className="relative z-10" style={{ marginTop: '240px' }}>
         
-        {/* 🔴 3.5D 弧形日期導覽 (透明度保底至 Day 3) */}
-        <div className="sticky top-0 z-[50] py-8 bg-gradient-to-b from-transparent via-gray-100/95 to-gray-100 backdrop-blur-sm">
-          <div className="flex justify-center items-center perspective-[1200px] h-20">
-            <div className="flex gap-4 items-center px-20">
+        {/* 🔴 修復後的 3D 滑動日期導覽 */}
+        <div className="sticky top-0 z-[50] py-6 bg-gradient-to-b from-transparent via-gray-50/95 to-gray-50 backdrop-blur-sm">
+          {/* 新增 overflow-x-auto 讓手機可以滑動，scrollbar-hide 隱藏捲軸 */}
+          <div className="flex items-center overflow-x-auto scrollbar-hide px-4 snap-x snap-mandatory h-24 perspective-[1200px]">
+            {/* 移除 justify-center，改用一個寬大的 flex 容器 */}
+            <div className="flex gap-6 items-center mx-auto px-10">
               {days.map(d => {
                 const diff = d - activeDay;
                 const absDiff = Math.abs(diff);
-                const visualAbsDiff = Math.min(absDiff, 3); // 🟢 關鍵：保底邏輯
+                const visualAbsDiff = Math.min(absDiff, 3);
+                
                 return (
                   <button 
-                    key={d} onClick={() => { setActiveDay(d); setDay(d); }}
+                    key={d} 
+                    onClick={() => { setActiveDay(d); setDay(d); }}
                     style={{
                       transform: `rotateY(${visualAbsDiff * (diff > 0 ? 20 : -20)}deg) scale(${1 - visualAbsDiff * 0.12}) translateZ(${-visualAbsDiff * 40}px)`,
                       opacity: 1 - visualAbsDiff * 0.2,
                       transition: 'all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)'
                     }}
-                    className={`flex-none w-20 py-2.5 rounded-2xl text-[10px] font-black shadow-xl border-2 transition-all ${activeDay === d ? 'bg-blue-600 text-white border-blue-400 scale-125 z-20' : 'bg-white text-gray-400 border-white z-10'}`}
+                    // 加入 snap-center 讓滑動時自動對齊
+                    className={`flex-none w-16 h-16 snap-center rounded-2xl text-[10px] font-black shadow-xl border-2 flex items-center justify-center transition-all ${
+                      activeDay === d 
+                      ? 'bg-blue-600 text-white border-blue-400 scale-125 z-20' 
+                      : 'bg-white text-gray-400 border-white z-10'
+                    }`}
                   >
-                    DAY {d}
+                    D{d}
                   </button>
                 );
               })}
