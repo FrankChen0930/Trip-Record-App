@@ -76,14 +76,22 @@ export default function TripMasterPage() {
 
   const currentItems = useMemo(() => data.filter(i => i.day === activeDay), [data, activeDay]);
   
-  // 🔴 優化：自動偵測天數範圍 (支援 Day 0)
+  // 🔴 修正：改以「旅程設定」的日期為準，不依賴行程資料多寡
   const days = useMemo(() => {
-    if (data.length === 0) return [1];
-    const allDays = data.map(d => d.day);
-    const min = Math.min(...allDays, 1);
-    const max = Math.max(...allDays, 1);
-    return Array.from({ length: max - min + 1 }, (_, i) => min + i);
-  }, [data]);
+    // 1. 防呆：如果還沒抓到旅程主資料，先預設顯示 Day 1
+    if (!tripInfo?.start_date || !tripInfo?.end_date) return [1];
+
+    const start = new Date(tripInfo.start_date);
+    const end = new Date(tripInfo.end_date);
+    
+    // 2. 計算兩日期間的毫秒差，轉換為天數
+    // 算式：(結束 - 開始) / 一天的毫秒數 + 1 (包含當天)
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    // 3. 產生 [1, 2, 3, ..., diffDays] 陣列
+    return Array.from({ length: diffDays }, (_, i) => i + 1);
+  }, [tripInfo]); // 🚀 關鍵：當 tripInfo 更新時（首頁修改日期後），這裡會連動重算
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
