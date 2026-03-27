@@ -176,18 +176,46 @@ body {
   opacity: 1;
 }
 
-/* ===== Confirm Dialog ===== */
+/* ===== Confirm Dialog (dedicated overlay, z-index > Modal) ===== */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  transition: all 0.3s var(--transition-smooth);
+}
+
+.confirm-overlay-visible {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+}
+
 .confirm-dialog {
   background: white;
   width: 100%;
   max-width: 22rem;
-  padding: 2rem;
+  padding: 2rem 2rem 1.5rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-float);
   transform: scale(0.9) translateY(20px);
   opacity: 0;
   transition: all 0.3s var(--transition-spring);
   text-align: center;
+}
+
+.confirm-dialog-visible {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.confirm-icon-wrapper {
+  font-size: 2rem;
+  margin-bottom: 1rem;
 }
 
 .confirm-message {

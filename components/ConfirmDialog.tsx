@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, createContext, useContext, useCallback } from 'react';
+import { useEffect, useState, createContext, useContext, useCallback, useRef } from 'react';
 
 interface ConfirmOptions {
   message: string;
@@ -30,6 +30,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [isAnimating, setIsAnimating] = useState(false);
+  const animTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -39,8 +40,15 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (state.isOpen) {
-      requestAnimationFrame(() => setIsAnimating(true));
+      // Use double rAF to ensure the DOM has painted before triggering animation
+      clearTimeout(animTimer.current);
+      animTimer.current = setTimeout(() => {
+        setIsAnimating(true);
+      }, 30);
+    } else {
+      setIsAnimating(false);
     }
+    return () => clearTimeout(animTimer.current);
   }, [state.isOpen]);
 
   const handleResponse = (value: boolean) => {
@@ -48,18 +56,24 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       state.resolve?.(value);
       setState(prev => ({ ...prev, isOpen: false, resolve: null }));
-    }, 250);
+    }, 280);
   };
 
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
       {state.isOpen && (
-        <div className={`modal-overlay ${isAnimating ? 'modal-overlay-visible' : ''}`} onClick={() => handleResponse(false)}>
+        <div
+          className={`confirm-overlay ${isAnimating ? 'confirm-overlay-visible' : ''}`}
+          onClick={() => handleResponse(false)}
+        >
           <div
-            className={`confirm-dialog ${isAnimating ? 'modal-content-visible' : ''}`}
+            className={`confirm-dialog ${isAnimating ? 'confirm-dialog-visible' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="confirm-icon-wrapper">
+              {state.options.danger ? '⚠️' : 'ℹ️'}
+            </div>
             <p className="confirm-message">{state.options.message}</p>
             <div className="confirm-actions">
               <button onClick={() => handleResponse(false)} className="confirm-cancel">
