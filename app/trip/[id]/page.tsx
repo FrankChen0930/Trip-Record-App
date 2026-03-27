@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
+import MapView, { extractCoordsFromUrl } from '@/components/MapView';
+import SpreadsheetImport from '@/components/SpreadsheetImport';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ItinerarySkeleton } from '@/components/Skeleton';
@@ -21,6 +23,8 @@ export default function TripMasterPage() {
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [isMapExpanded, setMapExpanded] = useState(false);
+  const [isImportOpen, setImportOpen] = useState(false);
   const [activeDay, setActiveDay] = useState(1);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const { toast } = useToast();
@@ -220,6 +224,22 @@ export default function TripMasterPage() {
         </div>
 
         <div className="bg-gray-50 min-h-screen px-6 pb-40 rounded-t-[3rem]">
+          {/* 地圖檢視 */}
+          <div className="max-w-xl mx-auto pt-4">
+            <MapView
+              pins={currentItems
+                .filter(item => item.map_url)
+                .map(item => {
+                  const coords = extractCoordsFromUrl(item.map_url || '');
+                  if (!coords) return null;
+                  return { lat: coords.lat, lng: coords.lng, label: item.location, time: item.start_time?.substring(0, 5) };
+                })
+                .filter((p): p is { lat: number; lng: number; label: string; time: string } => p !== null)
+              }
+              isExpanded={isMapExpanded}
+              onToggle={() => setMapExpanded(!isMapExpanded)}
+            />
+          </div>
           <div className="max-w-xl mx-auto relative pt-8">
             <div className="absolute left-[52px] top-0 bottom-0 w-1 bg-gray-200/50 rounded-full" />
 
@@ -320,7 +340,10 @@ export default function TripMasterPage() {
         </div>
       </div>
 
-      <button onClick={() => { resetForm(); setDay(activeDay); setFormOpen(true); }} className="fab-button bg-gray-900 text-white">+</button>
+      <div className="fixed bottom-6 right-6 z-[400] flex flex-col gap-2 items-end">
+        <button onClick={() => setImportOpen(true)} className="w-11 h-11 bg-blue-500 text-white rounded-2xl shadow-lg flex items-center justify-center text-lg hover:bg-blue-600 active:scale-95 transition-all" title="匯入試算表">📊</button>
+        <button onClick={() => { resetForm(); setDay(activeDay); setFormOpen(true); }} className="w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.25)] flex items-center justify-center text-2xl font-light hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)] active:scale-95 transition-all">+</button>
+      </div>
 
       {/* 新增/編輯行程 Modal */}
       <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editingId ? '編輯行程' : '新增行程'}>
@@ -357,6 +380,11 @@ export default function TripMasterPage() {
             <button type="submit" className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all hover:bg-blue-700">儲存行程</button>
           </div>
         </form>
+      </Modal>
+
+      {/* 試算表匯入 Modal */}
+      <Modal isOpen={isImportOpen} onClose={() => setImportOpen(false)} title="匯入行程資料">
+        <SpreadsheetImport tripId={tripId as string} tripInfo={tripInfo} onImportComplete={fetchData} onClose={() => setImportOpen(false)} />
       </Modal>
 
       <BottomTabs />
