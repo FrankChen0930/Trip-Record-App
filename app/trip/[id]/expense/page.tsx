@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -318,6 +319,8 @@ export default function TripExpensePage() {
           </div>
         </form>
       </Modal>
+
+      <BottomTabs />
     </div>
   );
 }

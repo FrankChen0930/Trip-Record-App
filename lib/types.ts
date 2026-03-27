@@ -6,6 +6,7 @@ export interface Trip {
   start_date: string;
   end_date: string | null;
   cover_url: string | null;
+  group_id: string | null;
   created_at?: string;
 }
 
@@ -57,4 +58,31 @@ export interface MemberTicketStatus {
   member_name: string;
   ticket_link: string | null;
   is_ready: boolean;
+}
+
+// ===== 新增：身分組系統 =====
+
+export interface Group {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  created_at: string;
+}
+
+export interface GroupMember {
+  id: string;
+  group_id: string;
+  member_id: string;
+}
+
+// ===== 新增：每日日記 =====
+
+export interface Journal {
+  id: string;
+  trip_id: string;
+  day: number;
+  content: string;
+  created_at: string;
+  updated_at: string;
 }

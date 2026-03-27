@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import BottomTabs from '@/components/BottomTabs';
 import Lightbox from '@/components/Lightbox';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -261,6 +262,8 @@ export default function PhotoArchivePage() {
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
       />
+
+      <BottomTabs />
     </div>
   );
 }
