@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
-import MapView, { extractCoordsFromUrl } from '@/components/MapView';
+import MapView from '@/components/MapView';
 import SpreadsheetImport from '@/components/SpreadsheetImport';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -227,15 +227,11 @@ export default function TripMasterPage() {
           {/* 地圖檢視 */}
           <div className="max-w-xl mx-auto pt-4">
             <MapView
-              pins={currentItems
-                .filter(item => item.map_url)
-                .map(item => {
-                  const coords = extractCoordsFromUrl(item.map_url || '');
-                  if (!coords) return null;
-                  return { lat: coords.lat, lng: coords.lng, label: item.location, time: item.start_time?.substring(0, 5) };
-                })
-                .filter((p): p is { lat: number; lng: number; label: string; time: string } => p !== null)
-              }
+              items={currentItems.map(item => ({
+                location: item.location,
+                mapUrl: item.map_url || undefined,
+                time: item.start_time?.substring(0, 5),
+              }))}
               isExpanded={isMapExpanded}
               onToggle={() => setMapExpanded(!isMapExpanded)}
             />
