@@ -330,7 +330,7 @@ export default function SpreadsheetImport({ tripId, tripInfo, onImportComplete, 
         transport_type: row.transport_type,
         item_type: row.item_type,
         note: row.note || null,
-        map_url: row.map_url || null,
+        map_url: row.map_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.location)}`,
       }));
 
       const { error } = await supabase.from('trip_itinerary').insert(payload);

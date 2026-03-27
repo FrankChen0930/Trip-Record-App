@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
-import MapView from '@/components/MapView';
 import SpreadsheetImport from '@/components/SpreadsheetImport';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -23,7 +22,6 @@ export default function TripMasterPage() {
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
-  const [isMapExpanded, setMapExpanded] = useState(false);
   const [isImportOpen, setImportOpen] = useState(false);
   const [activeDay, setActiveDay] = useState(1);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -224,18 +222,6 @@ export default function TripMasterPage() {
         </div>
 
         <div className="bg-gray-50 min-h-screen px-6 pb-40 rounded-t-[3rem]">
-          {/* 地圖檢視 */}
-          <div className="max-w-xl mx-auto pt-4">
-            <MapView
-              items={currentItems.map(item => ({
-                location: item.location,
-                mapUrl: item.map_url || undefined,
-                time: item.start_time?.substring(0, 5),
-              }))}
-              isExpanded={isMapExpanded}
-              onToggle={() => setMapExpanded(!isMapExpanded)}
-            />
-          </div>
           <div className="max-w-xl mx-auto relative pt-8">
             <div className="absolute left-[52px] top-0 bottom-0 w-1 bg-gray-200/50 rounded-full" />
 
