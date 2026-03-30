@@ -37,6 +37,11 @@ export default function TripMasterPage() {
   const [itemType, setItemType] = useState('activity');
   const [note, setNote] = useState('');
   const [mapUrl, setMapUrl] = useState('');
+  const [spotUrls, setSpotUrls] = useState<Record<string, string>>({});
+
+  const spots = useMemo(() => {
+    return location.split(/[\/\+、，,]/).map(s => s.trim()).filter(Boolean);
+  }, [location]);
 
   const fetchData = async () => {
     if (!tripId) return;
@@ -114,10 +119,19 @@ export default function TripMasterPage() {
     e.preventDefault();
     if (!location) { toast('請填寫地點', 'warning'); return; }
 
+    let finalMapUrl = mapUrl;
+    if (spots.length > 1) {
+      const urlsToSave = spots
+        .map(spot => ({ name: spot, url: spotUrls[spot] || '' }))
+        .filter(u => u.url);
+      if (urlsToSave.length > 0) finalMapUrl = JSON.stringify(urlsToSave);
+      else finalMapUrl = '';
+    }
+
     const payload = {
       day, start_time: startTime, end_time: endTime || null,
       location, transport_type: transport, item_type: itemType,
-      note, trip_id: tripId, map_url: mapUrl
+      note, trip_id: tripId, map_url: finalMapUrl
     };
 
     try {
@@ -138,7 +152,7 @@ export default function TripMasterPage() {
   };
 
   const resetForm = () => {
-    setEditingId(null); setLocation(''); setNote(''); setMapUrl('');
+    setEditingId(null); setLocation(''); setNote(''); setMapUrl(''); setSpotUrls({});
     setStartTime('08:00'); setEndTime(''); setTransport('機車'); setItemType('activity');
   };
 
@@ -146,7 +160,27 @@ export default function TripMasterPage() {
     setEditingId(item.id); setDay(item.day); setStartTime(item.start_time || '08:00');
     setEndTime(item.end_time || ''); setLocation(item.location);
     setTransport(item.transport_type); setItemType(item.item_type || 'activity');
-    setNote(item.note || ''); setMapUrl(item.map_url || '');
+    setNote(item.note || '');
+
+    let parsedUrls: Record<string, string> = {};
+    let defaultUrl = '';
+
+    if (item.map_url) {
+      if (item.map_url.startsWith('[')) {
+        try {
+          const arr = JSON.parse(item.map_url);
+          if (arr.length > 0) defaultUrl = arr[0].url;
+          arr.forEach((u: any) => { if (u.name) parsedUrls[u.name] = u.url; });
+        } catch (e) {
+          defaultUrl = item.map_url;
+        }
+      } else {
+        defaultUrl = item.map_url;
+      }
+    }
+
+    setMapUrl(defaultUrl);
+    setSpotUrls(parsedUrls);
     setFormOpen(true);
   };
 
@@ -278,9 +312,25 @@ export default function TripMasterPage() {
                           </div>
 
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {item.map_url && (
-                              <a href={item.map_url} target="_blank" className="w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100">📍</a>
-                            )}
+                            {(() => {
+                              if (!item.map_url) return null;
+                              if (item.map_url.startsWith('[')) {
+                                try {
+                                  const urls = JSON.parse(item.map_url) as {name: string, url: string}[];
+                                  return urls.map((u, i) => (
+                                    <a key={i} href={u.url} target="_blank" className="relative group/btn w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100">
+                                      📍
+                                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white text-[10px] py-1 px-2 rounded-lg opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-opacity font-bold">
+                                        {u.name}
+                                      </span>
+                                    </a>
+                                  ));
+                                } catch (e) {}
+                              }
+                              return (
+                                <a href={item.map_url} target="_blank" className="w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100">📍</a>
+                              );
+                            })()}
                             <button onClick={() => handleEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all">✎</button>
                             <button onClick={() => handleDelete(item.id)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">✕</button>
                           </div>
@@ -343,8 +393,29 @@ export default function TripMasterPage() {
             <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black focus:ring-2 focus:ring-blue-500 transition-all" placeholder="地點 (例: 騎車90分鐘 / 台中隨興)" />
 
             <div className="relative">
-              <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} className="w-full bg-blue-50 p-4 pr-12 rounded-2xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Google Maps 分享連結" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2">📍</span>
+              {spots.length <= 1 ? (
+                <div className="relative">
+                  <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} className="w-full bg-blue-50 p-4 pr-12 rounded-2xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Google Maps 分享連結" />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2">📍</span>
+                </div>
+              ) : (
+                <div className="space-y-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-50">
+                  <div className="text-xs font-bold text-blue-800 mb-2">📍 設定多個景點連結</div>
+                  {spots.map((spot, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-1/3 text-xs font-bold text-gray-600 truncate" title={spot}>{spot}</div>
+                      <div className="relative flex-1">
+                        <input 
+                          value={spotUrls[spot] || ''} 
+                          onChange={e => setSpotUrls(prev => ({...prev, [spot]: e.target.value}))}
+                          className="w-full bg-white p-3 rounded-xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+                          placeholder={`${spot} 連結`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <select value={transport} onChange={e => setTransport(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black appearance-none">
