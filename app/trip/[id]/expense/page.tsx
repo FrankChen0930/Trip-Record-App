@@ -46,6 +46,12 @@ export default function TripExpensePage() {
     if (mem && mem.length > 0) {
       if (!payer) setPayer(mem[0].nickname);
       if (selectedFriends.length === 0) setSelectedFriends(mem.map(m => m.nickname));
+      
+      const myId = localStorage.getItem('my_member_id');
+      if (myId) {
+        const me = mem.find(m => m.id === myId);
+        if (me) setSelectedLedgerMember(me.nickname);
+      }
     }
     setLoading(false);
   };

@@ -9,6 +9,7 @@ import Lightbox from '@/components/Lightbox';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import type { Trip, Photo } from '@/lib/types';
+import { ExternalLink, Folder } from 'lucide-react';
 
 export default function PhotoArchivePage() {
   const { id: tripId } = useParams();
@@ -191,14 +192,37 @@ export default function PhotoArchivePage() {
           </div>
         ) : (
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4 pb-48">
-            {filteredPhotos.map((photo, idx) => (
-              <div key={photo.id} className="relative group break-inside-avoid rounded-[1.5rem] overflow-hidden shadow-lg border border-white cursor-pointer" onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}>
-                <img
-                  src={photo.url}
-                  alt="trip"
-                  className="w-full h-auto grayscale-[0.15] group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105"
-                  loading="lazy"
-                />
+            {filteredPhotos.map((photo, idx) => {
+              const isGenericLink = photo.url.includes('drive.google.com/drive/folders') || photo.url.includes('photos.app.goo.gl') || (!photo.is_storage && !photo.url.match(/\.(jpeg|jpg|gif|png|webp)/i) && !photo.url.includes('uc?export=view'));
+              
+              if (isGenericLink) {
+                return (
+                  <div key={photo.id} className="relative group break-inside-avoid rounded-[1.5rem] overflow-hidden shadow-sm border border-gray-100 bg-white hover:border-amber-300 transition-colors">
+                     <a href={photo.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-8 text-center h-48">
+                        <Folder className="w-12 h-12 text-amber-300 mb-3 group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-bold text-gray-400 break-all line-clamp-2 leading-relaxed">外部雲端相簿連結</span>
+                     </a>
+                     <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(photo); }}
+                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 bg-red-50 text-red-500 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                      <div className="absolute bottom-3 left-3">
+                         <span className="bg-amber-50 text-amber-600 text-[9px] font-black px-2 py-1 rounded-lg uppercase">外部連結</span>
+                      </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={photo.id} className="relative group break-inside-avoid rounded-[1.5rem] overflow-hidden shadow-lg border border-white cursor-pointer" onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}>
+                  <img
+                    src={photo.url}
+                    alt="trip"
+                    className="w-full h-auto grayscale-[0.15] group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105"
+                    loading="lazy"
+                  />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-all duration-300 p-4 flex flex-col justify-between items-end">
                   <div className="flex gap-2">
@@ -214,14 +238,15 @@ export default function PhotoArchivePage() {
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
-                  <div className="w-full">
-                    <p className="text-white text-[9px] font-black uppercase tracking-widest">
+                  <div className="w-full mt-2">
+                    <p className="text-white text-[9px] font-black uppercase tracking-widest bg-black/30 inline-block px-2 py-1 rounded-lg backdrop-blur-sm">
                       {new Date(photo.created_at).toLocaleDateString()} {photo.is_storage ? '(精選)' : '(雲端)'}
                     </p>
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         )}
       </div>

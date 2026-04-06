@@ -178,8 +178,8 @@ export default function PlanPage() {
     const end = new Date(tripInfo.end_date);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const daysArr = Array.from({ length: diffDays }, (_, i) => i + 1);
-    return showDayZero ? [0, ...daysArr] : daysArr;
+    const daysArr = Array.from({ length: diffDays }, (_, i) => showDayZero ? i : i + 1);
+    return daysArr;
   }, [tripInfo, showDayZero]);
 
   const timeSlots = useMemo(() => {
@@ -195,9 +195,8 @@ export default function PlanPage() {
 
   const getDayDate = (dayNum: number) => {
     if (!tripInfo?.start_date) return '';
-    if (dayNum === 0) return '行前準備';
     const date = new Date(tripInfo.start_date);
-    date.setDate(date.getDate() + dayNum - 1);
+    date.setDate(date.getDate() + dayNum - (showDayZero ? 0 : 1));
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     return `${date.getMonth() + 1}/${date.getDate()} (${weekdays[date.getDay()]})`;
   };
@@ -328,7 +327,7 @@ export default function PlanPage() {
             <div className="h-6 w-px bg-gray-200 mx-2"></div>
             <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
               <input type="checkbox" checked={showDayZero} onChange={e => setShowDayZero(e.target.checked)} className="accent-indigo-500" />
-              Day 0 (行前準備)
+              從 Day 0 開始計算
             </label>
           </div>
         </div>
@@ -362,13 +361,19 @@ export default function PlanPage() {
               <div className="flex relative">
                  {/* Y-Axis: Time Slots */}
                  <div className="w-20 flex-shrink-0 bg-white z-0 flex flex-col border-r border-gray-200">
-                    <button onClick={() => setStartHour(Math.max(0, startHour - 1))} className="h-8 bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 border-b border-gray-100 transition-colors" title="較早時間"><ChevronUp className="w-4 h-4"/></button>
+                    <div className="h-8 flex border-b border-gray-100 bg-gray-50">
+                        <button onClick={() => setStartHour(Math.max(0, startHour - 1))} className="flex-1 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors" title="增加更早時間"><ChevronUp className="w-4 h-4"/></button>
+                        <button onClick={() => setStartHour(Math.min(23, startHour + 1))} className="flex-1 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors border-l border-gray-100" title="刪除時間列"><Trash2 className="w-3 h-3"/></button>
+                    </div>
                     {timeSlots.map(t => (
                       <div key={t} className="h-28 border-b border-gray-100 flex items-start justify-center p-2">
                         <span className="text-[10px] font-mono font-bold text-gray-400">{t}</span>
                       </div>
                     ))}
-                    <button onClick={() => setEndHour(Math.min(23, endHour + 1))} className="h-8 bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors" title="較晚時間"><ChevronDown className="w-4 h-4"/></button>
+                    <div className="h-8 flex border-b border-gray-100 bg-gray-50">
+                        <button onClick={() => setEndHour(Math.max(0, endHour - 1))} className="flex-1 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors border-r border-gray-100" title="刪除時間列"><Trash2 className="w-3 h-3"/></button>
+                        <button onClick={() => setEndHour(Math.min(23, endHour + 1))} className="flex-1 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors" title="增加更晚時間"><ChevronDown className="w-4 h-4"/></button>
+                    </div>
                     
                     {/* Placeholder for Accommodation row */}
                     <div className="flex-1 min-h-[120px] bg-white border-r border-gray-200 border-b border-gray-100"></div>
