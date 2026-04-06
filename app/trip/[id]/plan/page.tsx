@@ -247,12 +247,25 @@ export default function PlanPage() {
       setBucketList(prev => prev.filter(b => b.id !== bucketItem.id));
 
       try {
-        await supabase.from('trip_itinerary').insert([{ ...newItItem, id: undefined }]);
-        await supabase.from('trip_bucket_list').delete().eq('id', bucketItem.id);
-        fetchData();
+        const { error: insertError } = await supabase.from('trip_itinerary').insert([{
+          trip_id: tripId,
+          day: cellDay,
+          start_time: cellTime,
+          location: bucketItem.title,
+          transport_type: '機車',
+          item_type: 'activity',
+          note: bucketItem.note || null,
+          map_url: bucketItem.link || null
+        }]);
+        if (insertError) throw insertError;
+
+        const { error: deleteError } = await supabase.from('trip_bucket_list').delete().eq('id', bucketItem.id);
+        if (deleteError) throw deleteError;
+
         toast('行程已建立', 'success');
       } catch (err: any) {
-        toast('指派失敗', 'error');
+        toast('指派失敗: ' + err.message, 'error');
+      } finally {
         fetchData();
       }
     }
