@@ -10,6 +10,7 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ExpenseSkeleton } from '@/components/Skeleton';
 import type { Trip, Member, Expense } from '@/lib/types';
+import { Menu, DollarSign, Trash2, Edit2, Copy, Receipt } from 'lucide-react';
 
 export default function TripExpensePage() {
   const { id: tripId } = useParams();
@@ -24,10 +25,13 @@ export default function TripExpensePage() {
   const { confirm } = useConfirm();
 
   // 表單狀態
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [item, setItem] = useState('');
   const [amount, setAmount] = useState('');
   const [payer, setPayer] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal');
+  const [splitDetails, setSplitDetails] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
@@ -61,23 +65,84 @@ export default function TripExpensePage() {
     };
   }, [tripId]);
 
+  const handleEditClick = (exp: Expense) => {
+    setEditingId(exp.id);
+    setItem(exp.item_name);
+    setAmount(exp.amount.toString());
+    setPayer(exp.payer);
+    setSelectedFriends(exp.participants);
+    setSplitType(exp.split_type || 'equal');
+    
+    const parsedDetails: Record<string, string> = {};
+    if (exp.split_details) {
+      Object.entries(exp.split_details).forEach(([key, val]) => {
+        parsedDetails[key] = String(val);
+      });
+    }
+    setSplitDetails(parsedDetails);
+    setFormOpen(true);
+  };
+
+  const handleCopyClick = (exp: Expense) => {
+    setEditingId(null);
+    setItem(exp.item_name);
+    setAmount(exp.amount.toString());
+    setPayer(exp.payer);
+    setSelectedFriends(exp.participants);
+    setSplitType(exp.split_type || 'equal');
+    
+    const parsedDetails: Record<string, string> = {};
+    if (exp.split_details) {
+      Object.entries(exp.split_details).forEach(([key, val]) => {
+        parsedDetails[key] = String(val);
+      });
+    }
+    setSplitDetails(parsedDetails);
+    setFormOpen(true);
+  };
+
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!item || !amount || selectedFriends.length === 0) { toast('請填寫完整資訊', 'warning'); return; }
 
+    const numAmount = parseFloat(amount);
+    
+    let finalSplitDetails: Record<string, number> = {};
+    if (splitType === 'custom') {
+      let customSum = 0;
+      for (const friend of selectedFriends) {
+        const friendAmt = parseFloat(splitDetails[friend] || '0');
+        finalSplitDetails[friend] = friendAmt;
+        customSum += friendAmt;
+      }
+      if (Math.abs(customSum - numAmount) > 1) {
+        toast(`自訂加總 (${customSum.toFixed(1)}) 不等於總額 (${numAmount})`, 'warning'); 
+        return;
+      }
+    }
+
+    const payload = {
+      item_name: item,
+      amount: numAmount,
+      payer,
+      participants: selectedFriends,
+      split_type: splitType,
+      split_details: splitType === 'custom' ? finalSplitDetails : null,
+      trip_id: tripId
+    };
+
     try {
-      await supabase.from('trip_expenses').insert([{
-        item_name: item,
-        amount: parseFloat(amount),
-        payer,
-        participants: selectedFriends,
-        trip_id: tripId
-      }]);
-      setItem(''); setAmount(''); setFormOpen(false);
-      toast('支出已記錄', 'success');
+      if (editingId) {
+        await supabase.from('trip_expenses').update(payload).eq('id', editingId);
+        toast('支出已更新', 'success');
+      } else {
+        await supabase.from('trip_expenses').insert([payload]);
+        toast('支出已記錄', 'success');
+      }
+      setItem(''); setAmount(''); setFormOpen(false); setEditingId(null); setSplitDetails({});
       fetchData();
     } catch (error: any) {
-      toast('記錄失敗：' + error.message, 'error');
+      toast('儲存失敗：' + error.message, 'error');
     }
   };
 
@@ -94,11 +159,18 @@ export default function TripExpensePage() {
   members.forEach(m => balances[m.nickname] = 0);
   expenses.forEach(exp => {
     const amt = typeof exp.amount === 'number' ? exp.amount : parseFloat(String(exp.amount));
-    const perPerson = amt / exp.participants.length;
     if (balances[exp.payer] !== undefined) balances[exp.payer] += amt;
-    exp.participants.forEach((p: string) => {
-      if (balances[p] !== undefined) balances[p] -= perPerson;
-    });
+    
+    if (exp.split_type === 'custom' && exp.split_details) {
+      Object.entries(exp.split_details).forEach(([person, personAmt]) => {
+         if (balances[person] !== undefined) balances[person] -= (typeof personAmt === 'number' ? personAmt : parseFloat(String(personAmt)));
+      });
+    } else {
+      const perPerson = amt / exp.participants.length;
+      exp.participants.forEach((p: string) => {
+        if (balances[p] !== undefined) balances[p] -= perPerson;
+      });
+    }
   });
 
   const getTransactions = () => {
@@ -155,7 +227,7 @@ export default function TripExpensePage() {
       {/* 頂部導航 */}
       <div className={`p-4 flex items-center sticky top-0 z-50 transition-all duration-300 ${scrollY > 100 ? 'bg-white/90 backdrop-blur-lg shadow-sm' : 'bg-transparent'}`}>
         <button onClick={() => setSidebarOpen(true)} className={`p-2.5 rounded-xl transition-all ${scrollY > 100 ? 'text-black hover:bg-gray-100' : 'text-white glass-dark'}`}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          <Menu className="h-5 w-5" />
         </button>
         <h1 className={`ml-4 font-bold text-sm transition-all ${scrollY > 100 ? 'opacity-100 text-emerald-600' : 'opacity-0'}`}>
           {tripInfo?.name} - 支出結算
@@ -231,7 +303,7 @@ export default function TripExpensePage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <span className="text-3xl block mb-2">✨</span>
+                <Receipt className="w-8 h-8 text-emerald-300 mx-auto mb-2 opacity-50" />
                 <p className="text-gray-400 italic text-sm font-medium">目前帳目已平清</p>
               </div>
             )}
@@ -243,9 +315,9 @@ export default function TripExpensePage() {
             {loading ? <ExpenseSkeleton /> :
               expenses.length === 0 ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon">💰</div>
+                  <div className="empty-state-icon"><Receipt className="w-12 h-12 text-gray-400" /></div>
                   <h3 className="text-lg font-bold text-gray-300 mb-2">還沒有支出紀錄</h3>
-                  <p className="text-sm text-gray-300">點擊右下角的 $ 按鈕開始記帳！</p>
+                  <p className="text-sm text-gray-300">點擊右下角的 {<DollarSign className="inline w-4 h-4" />} 按鈕開始記帳！</p>
                 </div>
               ) :
               expenses.map(exp => (
@@ -256,12 +328,21 @@ export default function TripExpensePage() {
                     </span>
                     <h4 className="font-bold text-gray-800 text-lg leading-none mb-1">{exp.item_name}</h4>
                     <p className="text-[10px] text-gray-400 font-medium">參與：{exp.participants.join(', ')}</p>
+                    {exp.split_type === 'custom' && <p className="text-[9px] text-orange-500 font-bold mt-0.5">自訂分攤</p>}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-xl text-blue-600">${typeof exp.amount === 'number' ? exp.amount.toFixed(0) : parseFloat(String(exp.amount)).toFixed(0)}</span>
-                    <button onClick={() => handleDelete(exp.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-xl text-blue-600 mr-2">${typeof exp.amount === 'number' ? exp.amount.toFixed(0) : parseFloat(String(exp.amount)).toFixed(0)}</span>
+                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEditClick(exp)} className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-100 transition-all" title="編輯">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleCopyClick(exp)} className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-emerald-500 hover:bg-emerald-100 transition-all" title="複製">
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(exp.id)} className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-100 transition-all" title="刪除">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -272,14 +353,22 @@ export default function TripExpensePage() {
 
       {/* FAB 按鈕 */}
       <button
-        onClick={() => setFormOpen(true)}
-        className="fab-button bg-emerald-500 text-white hover:shadow-[0_8px_40px_rgba(16,185,129,0.35)]"
+        onClick={() => {
+          setEditingId(null); setItem(''); setAmount(''); setSplitDetails({});
+          setSplitType('equal');
+          if (members && members.length > 0) {
+            setPayer(members[0].nickname);
+            setSelectedFriends(members.map(m => m.nickname));
+          }
+          setFormOpen(true);
+        }}
+        className="fab-button bg-emerald-500 text-white hover:shadow-[0_8px_40px_rgba(16,185,129,0.35)] flex items-center justify-center"
       >
-        $
+        <DollarSign className="w-8 h-8" />
       </button>
 
-      {/* 新增支出 Modal */}
-      <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title="新增支出紀錄">
+      {/* 新增/編輯支出 Modal */}
+      <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editingId ? "編輯支出紀錄" : "新增支出紀錄"}>
         <form onSubmit={handleAddExpense}>
           <div className="space-y-5">
             <div>
@@ -297,20 +386,56 @@ export default function TripExpensePage() {
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1">分攤對象</label>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex justify-between items-end mb-2">
+                <label className="text-[10px] text-gray-400 font-bold uppercase ml-1">分攤對象</label>
+                <div className="flex bg-gray-100 rounded-lg p-0.5">
+                  <button type="button" onClick={() => setSplitType('equal')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${splitType === 'equal' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'}`}>均分</button>
+                  <button type="button" onClick={() => setSplitType('custom')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${splitType === 'custom' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'}`}>自訂</button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 {members.map(m => (
                   <button
                     key={m.id} type="button"
-                    onClick={() => selectedFriends.includes(m.nickname)
-                      ? setSelectedFriends(selectedFriends.filter(f => f !== m.nickname))
-                      : setSelectedFriends([...selectedFriends, m.nickname])}
+                    onClick={() => {
+                        if (selectedFriends.includes(m.nickname)) {
+                            setSelectedFriends(selectedFriends.filter(f => f !== m.nickname));
+                        } else {
+                            setSelectedFriends([...selectedFriends, m.nickname]);
+                        }
+                    }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedFriends.includes(m.nickname) ? 'bg-blue-600 text-white shadow-md scale-105' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                   >
                     {m.nickname}
                   </button>
                 ))}
               </div>
+
+              {/* 自訂分攤輸入區 */}
+              {splitType === 'custom' && selectedFriends.length > 0 && (
+                <div className="mt-4 bg-orange-50 p-4 rounded-2xl border border-orange-100">
+                  <h4 className="text-[10px] font-bold text-orange-600 mb-3 uppercase tracking-widest">輸入各自分攤金額</h4>
+                  <div className="space-y-2">
+                    {selectedFriends.map(friend => (
+                      <div key={friend} className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-gray-700 w-20">{friend}</span>
+                        <input
+                          type="number" placeholder="0"
+                          value={splitDetails[friend] || ''}
+                          onChange={e => setSplitDetails({...splitDetails, [friend]: e.target.value})}
+                          className="flex-1 border-none p-2 rounded-xl bg-white outline-none font-mono text-sm focus:ring-2 focus:ring-orange-400 text-right"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-orange-200/50 flex justify-between items-center text-xs font-bold">
+                    <span className="text-orange-800">目前總分攤：</span>
+                    <span className={`${Math.abs(selectedFriends.reduce((acc, f) => acc + parseFloat(splitDetails[f] || '0'), 0) - (parseFloat(amount) || 0)) < 1 ? 'text-emerald-600' : 'text-red-500'} font-mono text-sm`}>
+                      ${selectedFriends.reduce((acc, f) => acc + parseFloat(splitDetails[f] || '0'), 0).toFixed(0)} / ${amount || 0}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-3 mt-10">

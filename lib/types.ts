@@ -49,6 +49,19 @@ export interface Expense {
   amount: number;
   payer: string;
   participants: string[];
+  split_type?: 'equal' | 'custom';
+  split_details?: Record<string, number>;
+  created_at: string;
+}
+
+export interface BucketItem {
+  id: string;
+  trip_id: string;
+  category: 'accommodation' | 'attraction' | 'note';
+  title: string;
+  price: number | null;
+  link: string | null;
+  note: string | null;
   created_at: string;
 }
 

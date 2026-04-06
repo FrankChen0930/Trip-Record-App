@@ -11,6 +11,7 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ItinerarySkeleton } from '@/components/Skeleton';
 import type { Trip, ItineraryItem, Member } from '@/lib/types';
+import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket } from 'lucide-react';
 
 export default function TripMasterPage() {
   const { id: tripId } = useParams();
@@ -200,10 +201,14 @@ export default function TripMasterPage() {
   };
 
   const getTransportEmoji = (type: string) => {
-    const emojis: {[key: string]: string} = {
-      '機車': '🏍️', '汽車': '🚗', '火車': '🚃', '高鐵': '🚄', '步行': '🚶'
+    const emojis: {[key: string]: React.ReactNode} = {
+      '機車': <Navigation className="w-4 h-4 ml-1" />, 
+      '汽車': <Map className="w-4 h-4 ml-1" />, 
+      '火車': <MapPin className="w-4 h-4 ml-1" />, 
+      '高鐵': <Clock className="w-4 h-4 ml-1" />, 
+      '步行': <Compass className="w-4 h-4 ml-1" />
     };
-    return emojis[type] || '🚗';
+    return emojis[type] || <MapPin className="w-4 h-4 ml-1" />;
   };
 
   return (
@@ -211,7 +216,9 @@ export default function TripMasterPage() {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="itinerary" />
 
       <div className="fixed top-6 left-6 z-[100]">
-        <button onClick={() => setSidebarOpen(true)} className="p-3 rounded-2xl glass-dark text-white shadow-2xl hover:bg-black/60 transition-all">☰</button>
+        <button onClick={() => setSidebarOpen(true)} className="p-3 rounded-2xl glass-dark text-white shadow-2xl hover:bg-black/60 transition-all">
+          <Menu className="w-6 h-6" />
+        </button>
       </div>
 
       {/* 封面區域 */}
@@ -288,81 +295,95 @@ export default function TripMasterPage() {
                       </div>
                     </div>
 
-                    <div className="absolute left-[52px] top-8 -translate-x-1/2 w-6 h-6 rounded-full border-4 border-gray-50 bg-blue-600 z-30 shadow-lg group-hover:scale-125 transition-transform" />
+                    <div className="absolute left-[52px] top-8 -translate-x-1/2 w-5 h-5 rounded-full border-4 border-gray-50 bg-blue-600 z-30 shadow-[0_0_15px_rgba(37,99,235,0.4)] group-hover:scale-125 transition-transform" />
 
                     <div className="relative">
                       <div className="flex items-center gap-2 mb-2 font-mono text-[10px] font-black">
-                        <span className="bg-gray-900 text-white px-3 py-1 rounded-lg shadow-sm">
+                        <span className="bg-gray-900 text-white px-3 py-1 rounded-xl shadow-sm flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
                           {item.start_time?.substring(0, 5)} {item.end_time && `~ ${item.end_time.substring(0, 5)}`}
                         </span>
-                        {isTicket && <span className="text-orange-600 font-bold ml-1 italic tracking-widest">● TICKET LOG</span>}
+                        {isTicket && <span className="text-orange-600 font-bold ml-1 italic tracking-widest flex items-center gap-1"><Ticket className="w-3 h-3"/> TICKET LOG</span>}
                       </div>
 
-                      <div className={`p-6 rounded-[2rem] shadow-lg border-2 transition-all card-hover ${
-                        isTransit ? 'bg-violet-50 border-violet-100' :
-                        isOptional ? 'bg-blue-50/40 border-blue-200 border-dashed' :
-                        isTicket ? 'bg-amber-50 border-amber-200 border-dashed' : 'bg-white border-white'
-                      }`}>
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            {isOptional && <span className="text-[8px] bg-blue-500 text-white px-2 py-0.5 rounded-full mb-1 inline-block font-black">OPTIONAL</span>}
-                            <h3 className={`text-xl font-black leading-tight ${isTransit ? 'text-violet-900' : 'text-gray-900'}`}>
-                              {item.location}
-                            </h3>
-                          </div>
+                      {(() => {
+                        const isFood = item.location.match(/(食|餐廳|晚餐|午餐|早餐|夜市)/);
+                        const isAccommodation = item.location.match(/(宿|飯店|民宿|酒店|旅店|營地)/);
+                        const isTransitItem = item.location.match(/(騎車|移動|搭車|火車|高鐵|客運)/) || isTransit;
+                        
+                        const cardStyle = isTransitItem ? 'bg-indigo-50/80 border-indigo-100 shadow-[0_8px_30px_rgba(99,102,241,0.06)]' :
+                                          isFood ? 'bg-orange-50/80 border-orange-100 shadow-[0_8px_30px_rgba(249,115,22,0.06)]' :
+                                          isAccommodation ? 'bg-purple-50/80 border-purple-100 shadow-[0_8px_30px_rgba(168,85,247,0.06)]' :
+                                          isOptional ? 'bg-blue-50/40 border-blue-200 border-dashed shadow-[0_8px_30px_rgba(59,130,246,0.04)]' :
+                                          isTicket ? 'bg-amber-50/80 border-amber-200 border-dashed shadow-sm' :
+                                          'bg-white border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.08)]';
+                                          
+                        const titleColor = isTransitItem ? 'text-indigo-900' : isFood ? 'text-orange-950' : isAccommodation ? 'text-purple-950' : 'text-gray-900';
 
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {(() => {
-                              if (!item.map_url) return null;
-                              if (item.map_url.startsWith('[')) {
-                                try {
-                                  const urls = JSON.parse(item.map_url) as {name: string, url: string}[];
-                                  return urls.map((u, i) => (
-                                    <a key={i} href={u.url} target="_blank" className="relative group/btn w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100">
-                                      📍
-                                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white text-[10px] py-1 px-2 rounded-lg opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-opacity font-bold">
-                                        {u.name}
+                        return (
+                          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${cardStyle}`}>
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                {isOptional && <span className="text-[8px] bg-blue-500 text-white px-2 py-0.5 rounded-full mb-1 inline-block font-black">OPTIONAL</span>}
+                                <h3 className={`text-xl font-black leading-tight ${titleColor}`}>
+                                  {item.location}
+                                </h3>
+                              </div>
+
+                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {(() => {
+                                  if (!item.map_url) return null;
+                                  if (item.map_url.startsWith('[')) {
+                                    try {
+                                      const urls = JSON.parse(item.map_url) as {name: string, url: string}[];
+                                      return urls.map((u, i) => (
+                                        <a key={i} href={u.url} target="_blank" className="relative group/btn w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100 text-emerald-600">
+                                          <MapPin className="w-4 h-4" />
+                                          <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white text-[10px] py-1 px-2 rounded-lg opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-opacity font-bold">
+                                            {u.name}
+                                          </span>
+                                        </a>
+                                      ));
+                                    } catch (e) {}
+                                  }
+                                  return (
+                                    <a href={item.map_url} target="_blank" className="w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100 text-emerald-600"><MapPin className="w-4 h-4" /></a>
+                                  );
+                                })()}
+                                <button onClick={() => handleEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all"><Edit2 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDelete(item.id)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                            </div>
+
+                            {item.note && <p className="text-xs text-gray-400 mb-4 italic leading-relaxed">{item.note}</p>}
+
+                            {isTicket && (
+                              <div className="space-y-2 pt-4 border-t border-amber-200/50">
+                                {memberNicknames.map(name => {
+                                  const status = item.member_statuses?.find((s) => s.member_name === name);
+                                  return (
+                                    <div key={name} className="flex items-center justify-between bg-white/70 p-3 rounded-xl border border-amber-100/50">
+                                      <span className={`text-[10px] font-black ${status?.is_ready ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                        {name} {status?.is_ready ? '● 已取票' : '○ 待處理'}
                                       </span>
-                                    </a>
-                                  ));
-                                } catch (e) {}
-                              }
-                              return (
-                                <a href={item.map_url} target="_blank" className="w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100">📍</a>
-                              );
-                            })()}
-                            <button onClick={() => handleEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all">✎</button>
-                            <button onClick={() => handleDelete(item.id)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">✕</button>
+                                      <div className="flex gap-2">
+                                        <button onClick={() => { const link = prompt(`取票網址:`, status?.ticket_link || ''); if (link !== null) updateMemberTicket(item.id, name, link, !!status?.is_ready); }} className="text-[9px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-lg hover:bg-amber-200 transition-colors">傳連結</button>
+                                        {status?.ticket_link && <a href={status.ticket_link} target="_blank" onClick={() => updateMemberTicket(item.id, name, status.ticket_link, true)} className="text-[9px] font-bold bg-amber-600 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-amber-700 transition-colors">領票</a>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                        </div>
-
-                        {item.note && <p className="text-xs text-gray-400 mb-4 italic leading-relaxed">{item.note}</p>}
-
-                        {isTicket && (
-                          <div className="space-y-2 pt-4 border-t border-amber-200/50">
-                            {memberNicknames.map(name => {
-                              const status = item.member_statuses?.find((s) => s.member_name === name);
-                              return (
-                                <div key={name} className="flex items-center justify-between bg-white/70 p-3 rounded-xl border border-amber-100/50">
-                                  <span className={`text-[10px] font-black ${status?.is_ready ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                    {name} {status?.is_ready ? '● 已取票' : '○ 待處理'}
-                                  </span>
-                                  <div className="flex gap-2">
-                                    <button onClick={() => { const link = prompt(`取票網址:`, status?.ticket_link || ''); if (link !== null) updateMemberTicket(item.id, name, link, !!status?.is_ready); }} className="text-[9px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-lg hover:bg-amber-200 transition-colors">傳連結</button>
-                                    {status?.ticket_link && <a href={status.ticket_link} target="_blank" onClick={() => updateMemberTicket(item.id, name, status.ticket_link, true)} className="text-[9px] font-bold bg-amber-600 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-amber-700 transition-colors">領票</a>}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
               }) : (
                 <div className="empty-state">
-                  <div className="empty-state-icon">📝</div>
+                  <div className="empty-state-icon"><PenTool className="w-12 h-12 text-gray-300" /></div>
                   <h3 className="text-lg font-bold text-gray-300 mb-2">今天還沒有行程</h3>
                   <p className="text-sm text-gray-300">點擊右下角的 + 按鈕新增行程！</p>
                 </div>
@@ -373,8 +394,12 @@ export default function TripMasterPage() {
       </div>
 
       <div className="fixed bottom-6 right-6 z-[400] flex flex-col gap-2 items-end">
-        <button onClick={() => setImportOpen(true)} className="w-11 h-11 bg-blue-500 text-white rounded-2xl shadow-lg flex items-center justify-center text-lg hover:bg-blue-600 active:scale-95 transition-all" title="匯入試算表">📊</button>
-        <button onClick={() => { resetForm(); setDay(activeDay); setFormOpen(true); }} className="w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.25)] flex items-center justify-center text-2xl font-light hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)] active:scale-95 transition-all">+</button>
+        <button onClick={() => setImportOpen(true)} className="w-12 h-12 bg-blue-500 text-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-blue-600 active:scale-95 transition-all" title="匯入試算表">
+          <DownloadCloud className="w-5 h-5"/>
+        </button>
+        <button onClick={() => { resetForm(); setDay(activeDay); setFormOpen(true); }} className="w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.3)] flex items-center justify-center hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] active:scale-95 transition-all">
+          <Plus className="w-8 h-8" />
+        </button>
       </div>
 
       {/* 新增/編輯行程 Modal */}
@@ -395,12 +420,12 @@ export default function TripMasterPage() {
             <div className="relative">
               {spots.length <= 1 ? (
                 <div className="relative">
-                  <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} className="w-full bg-blue-50 p-4 pr-12 rounded-2xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Google Maps 分享連結" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2">📍</span>
+                  <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} className="w-full bg-blue-50 p-4 pl-12 rounded-2xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all font-bold" placeholder="Google Maps 分享連結" />
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
                 </div>
               ) : (
                 <div className="space-y-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-50">
-                  <div className="text-xs font-bold text-blue-800 mb-2">📍 設定多個景點連結</div>
+                  <div className="text-xs font-bold text-blue-800 mb-2 flex items-center gap-1"><MapPin className="w-4 h-4"/> 設定多個景點連結</div>
                   {spots.map((spot, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="w-1/3 text-xs font-bold text-gray-600 truncate" title={spot}>{spot}</div>

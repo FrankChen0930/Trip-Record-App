@@ -63,6 +63,20 @@
 | amount | numeric | 金額 |
 | payer | text | 代墊成員 |
 | participants | text[] | 分攤對象陣列 |
+| split_type | text | 分攤模式 ('equal' | 'custom') 預設 'equal' |
+| split_details | jsonb | 自訂分攤詳解 mapping `{ "nickname": amount }` |
+| created_at | timestamptz | 建立時間 |
+
+7. trip_bucket_list (行程備選池) ✨ NEW
+| 欄位名 | 型別 | 說明 |
+| :--- | :--- | :--- |
+| id | uuid | 主鍵 |
+| trip_id | uuid | 關聯到 trips.id |
+| category | text | 分類 ('accommodation', 'attraction', 'note') |
+| title | text | 標題/名稱 |
+| price | numeric | 金額（可選） |
+| link | text | 相關連結（可選） |
+| note | text | 備註（可選） |
 | created_at | timestamptz | 建立時間 |
 
 7. groups (身分組) ✨ NEW
@@ -130,4 +144,20 @@ CREATE TABLE trip_journals (
   updated_at timestamptz DEFAULT now(),
   UNIQUE(trip_id, day)
 );
+
+-- 行程備選池表格 ✨ NEW
+CREATE TABLE trip_bucket_list (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  trip_id uuid REFERENCES trips(id) ON DELETE CASCADE,
+  category text NOT NULL,
+  title text NOT NULL,
+  price numeric,
+  link text,
+  note text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- 記帳自訂分攤欄位 ✨ NEW
+ALTER TABLE trip_expenses ADD COLUMN split_type text DEFAULT 'equal';
+ALTER TABLE trip_expenses ADD COLUMN split_details jsonb;
 ```

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { Home, Tags, Users, Map, Book, DollarSign, Camera, LayoutDashboard, X } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -25,26 +26,29 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
         <div className="p-8 pb-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-black text-black tracking-tighter">TRAVEL</h2>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400 text-sm">✕</button>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400">
+              <X className="w-4 h-4" />
+            </button>
           </div>
           <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.3em]">Navigation System</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-          <NavLink href="/" onClick={onClose} icon="🏠" label="旅程存檔" sub="Archive" active={currentPage === 'itinerary' && !tripId} />
+          <NavLink href="/" onClick={onClose} icon={<Home className="w-5 h-5" />} label="旅程存檔" sub="Archive" active={currentPage === 'itinerary' && !tripId} />
 
           <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
-            <NavLink href="/groups" onClick={onClose} icon="🏷️" label="身分組" sub="Groups" active={currentPage === 'groups'} color="blue" />
-            <NavLink href="/members" onClick={onClose} icon="👤" label="成員名冊" sub="Members" active={currentPage === 'members'} color="violet" />
+            <NavLink href="/groups" onClick={onClose} icon={<Tags className="w-5 h-5" />} label="身分組" sub="Groups" active={currentPage === 'groups'} color="blue" />
+            <NavLink href="/members" onClick={onClose} icon={<Users className="w-5 h-5" />} label="成員名冊" sub="Members" active={currentPage === 'members'} color="violet" />
           </div>
 
           {tripId && (
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
               <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-3 px-4">CURRENT TRIP</p>
-              <NavLink href={`/trip/${tripId}`} onClick={onClose} icon="🧭" label="行程細節" sub="Itinerary" active={currentPage === 'itinerary'} color="blue" />
-              <NavLink href={`/trip/${tripId}/journal`} onClick={onClose} icon="📝" label="每日日記" sub="Journal" active={currentPage === 'journal'} color="amber" />
-              <NavLink href={`/trip/${tripId}/expense`} onClick={onClose} icon="💰" label="支出結算" sub="Settlement" active={currentPage === 'expense'} color="emerald" />
-              <NavLink href={`/trip/${tripId}/photos`} onClick={onClose} icon="📸" label="照片紀錄" sub="Gallery" active={currentPage === 'photos'} color="amber" />
+              <NavLink href={`/trip/${tripId}`} onClick={onClose} icon={<Map className="w-5 h-5" />} label="行程細節" sub="Itinerary" active={currentPage === 'itinerary'} color="blue" />
+              <NavLink href={`/trip/${tripId}/plan`} onClick={onClose} icon={<LayoutDashboard className="w-5 h-5" />} label="行程規劃" sub="Planning Mode" active={currentPage === 'plan'} color="indigo" />
+              <NavLink href={`/trip/${tripId}/journal`} onClick={onClose} icon={<Book className="w-5 h-5" />} label="每日日記" sub="Journal" active={currentPage === 'journal'} color="amber" />
+              <NavLink href={`/trip/${tripId}/expense`} onClick={onClose} icon={<DollarSign className="w-5 h-5" />} label="支出結算" sub="Settlement" active={currentPage === 'expense'} color="emerald" />
+              <NavLink href={`/trip/${tripId}/photos`} onClick={onClose} icon={<Camera className="w-5 h-5" />} label="照片紀錄" sub="Gallery" active={currentPage === 'photos'} color="amber" />
             </div>
           )}
         </nav>
@@ -60,7 +64,7 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
 
 // ===== Nav Link subcomponent =====
 function NavLink({ href, onClick, icon, label, sub, active, color }: {
-  href: string; onClick: () => void; icon: string; label: string; sub: string;
+  href: string; onClick: () => void; icon: React.ReactNode; label: string; sub: string;
   active: boolean; color?: string;
 }) {
   const bgMap: Record<string, string> = {
@@ -77,7 +81,7 @@ function NavLink({ href, onClick, icon, label, sub, active, color }: {
         active ? `${activeClass} shadow-sm` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
       }`}
     >
-      <span className="text-lg group-hover:scale-110 transition-transform">{icon}</span>
+      <span className="flex-shrink-0 group-hover:scale-110 transition-transform">{icon}</span>
       <div>
         <span className="text-sm font-bold block">{label}</span>
         <span className="text-[9px] opacity-50 font-medium">{sub}</span>
