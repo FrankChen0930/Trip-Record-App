@@ -51,6 +51,7 @@ export interface Expense {
   participants: string[];
   split_type?: 'equal' | 'custom';
   split_details?: Record<string, number>;
+  is_transfer?: boolean;
   created_at: string;
 }
 
@@ -59,9 +60,20 @@ export interface BucketItem {
   trip_id: string;
   category: 'accommodation' | 'attraction' | 'note';
   title: string;
-  price: number | null;
-  link: string | null;
-  note: string | null;
+  price?: number;
+  link?: string;
+  note?: string;
+  created_at: string;
+}
+
+export interface TripMemo {
+  id: string;
+  trip_id: string;
+  member_id: string | null;
+  content: string;
+  is_checked: boolean;
+  type: 'text' | 'heading1' | 'todo';
+  sort_order: number;
   created_at: string;
 }
 

@@ -154,6 +154,27 @@ export default function TripExpensePage() {
     fetchData();
   };
 
+  const handleSettleDebt = async (debtor: string, creditor: string, amount: number) => {
+    const ok = await confirm({ message: `確定記錄 ${debtor} 償還 ${creditor} $${amount.toFixed(0)} 嗎？`, confirmText: '確清帳', danger: false });
+    if (!ok) return;
+
+    try {
+      await supabase.from('trip_expenses').insert([{
+        item_name: '✔️ 結清款項',
+        amount: amount,
+        payer: debtor,
+        participants: [creditor],
+        split_type: 'equal',
+        is_transfer: true,
+        trip_id: tripId
+      }]);
+      toast('清帳紀錄已新增', 'success');
+      fetchData();
+    } catch (e: any) {
+      toast('清帳失敗：' + e.message, 'error');
+    }
+  };
+
   // 計算 Balance
   const balances: Record<string, number> = {};
   members.forEach(m => balances[m.nickname] = 0);
@@ -188,12 +209,13 @@ export default function TripExpensePage() {
   };
 
   const transactions = getTransactions();
-  const totalExpenses = expenses.reduce((acc, e) => acc + (typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount))), 0);
+  const totalExpenses = expenses.reduce((acc, e) => acc + (e.is_transfer ? 0 : (typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)))), 0);
 
   // 支出分類 (簡單圓餅圖)
   const categoryMap = useMemo(() => {
     const cat: Record<string, number> = {};
     expenses.forEach(e => {
+      if (e.is_transfer) return;
       const key = e.payer;
       cat[key] = (cat[key] || 0) + (typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)));
     });
@@ -290,14 +312,15 @@ export default function TripExpensePage() {
                       <span className="text-[9px] text-gray-400 font-bold uppercase">Debtor</span>
                       <span className="font-bold text-red-500">{t.from}</span>
                     </div>
-                    <div className="flex flex-col items-center px-4">
+                    <div className="flex flex-col items-center px-4 flex-1">
                       <span className="text-gray-200 text-xl">→</span>
                       <span className="font-mono font-bold text-emerald-700 text-lg">${t.amt.toFixed(0)}</span>
                     </div>
-                    <div className="flex flex-col items-end">
+                    <div className="flex flex-col items-end mr-4">
                       <span className="text-[9px] text-gray-400 font-bold uppercase text-right">Creditor</span>
                       <span className="font-bold text-blue-600">{t.to}</span>
                     </div>
+                    <button onClick={() => handleSettleDebt(t.from, t.to, t.amt)} className="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold text-[10px] rounded-xl transition-colors whitespace-nowrap">清帳</button>
                   </div>
                 ))}
               </div>
@@ -321,14 +344,18 @@ export default function TripExpensePage() {
                 </div>
               ) :
               expenses.map(exp => (
-                <div key={exp.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm flex justify-between items-center border border-transparent hover:border-emerald-200 transition-all card-hover group">
+                <div key={exp.id} className={`p-5 rounded-[1.5rem] shadow-sm flex justify-between items-center border border-transparent transition-all card-hover group ${exp.is_transfer ? 'bg-emerald-50/50 hover:border-emerald-200' : 'bg-white hover:border-blue-200'}`}>
                   <div>
-                    <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-tighter mb-2 inline-block">
-                      {exp.payer} 墊付
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter mb-2 inline-block ${exp.is_transfer ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-50 text-blue-500'}`}>
+                      {exp.payer} {exp.is_transfer ? '還款' : '墊付'}
                     </span>
                     <h4 className="font-bold text-gray-800 text-lg leading-none mb-1">{exp.item_name}</h4>
-                    <p className="text-[10px] text-gray-400 font-medium">參與：{exp.participants.join(', ')}</p>
-                    {exp.split_type === 'custom' && <p className="text-[9px] text-orange-500 font-bold mt-0.5">自訂分攤</p>}
+                    {exp.is_transfer ? (
+                       <p className="text-[10px] text-emerald-500 font-medium">還給：{exp.participants.join(', ')}</p>
+                    ) : (
+                       <p className="text-[10px] text-gray-400 font-medium">參與：{exp.participants.join(', ')}</p>
+                    )}
+                    {exp.split_type === 'custom' && !exp.is_transfer && <p className="text-[9px] text-orange-500 font-bold mt-0.5">自訂分攤</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-xl text-blue-600 mr-2">${typeof exp.amount === 'number' ? exp.amount.toFixed(0) : parseFloat(String(exp.amount)).toFixed(0)}</span>

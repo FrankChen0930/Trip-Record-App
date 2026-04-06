@@ -149,12 +149,24 @@ CREATE TABLE trip_journals (
 CREATE TABLE trip_bucket_list (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   trip_id uuid REFERENCES trips(id) ON DELETE CASCADE,
-  category text NOT NULL,
+  category text CHECK (category IN ('accommodation', 'attraction', 'note')),
   title text NOT NULL,
-  price numeric,
-  link text,
   note text,
-  created_at timestamptz DEFAULT now()
+  link text,
+  price numeric,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ✨ NEW✨: trip_memos table for Notion-style notes
+CREATE TABLE trip_memos (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  trip_id uuid REFERENCES trips(id) ON DELETE CASCADE,
+  member_id uuid REFERENCES trip_members(id) ON DELETE SET NULL, -- Null if global shared
+  content text NOT NULL,
+  is_checked boolean DEFAULT false,     -- For checklist
+  type varchar(20) DEFAULT 'text',      -- 'text', 'heading1', 'todo'
+  sort_order integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now()
 );
 
 -- 記帳自訂分攤欄位 ✨ NEW

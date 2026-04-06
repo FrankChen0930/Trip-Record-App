@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, Tags, Users, Map, Book, DollarSign, Camera, LayoutDashboard, X } from 'lucide-react';
+import { Home, Tags, Users, Map, Book, DollarSign, Camera, LayoutDashboard, X, FileText } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -46,6 +46,7 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
               <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-3 px-4">CURRENT TRIP</p>
               <NavLink href={`/trip/${tripId}`} onClick={onClose} icon={<Map className="w-5 h-5" />} label="行程細節" sub="Itinerary" active={currentPage === 'itinerary'} color="blue" />
               <NavLink href={`/trip/${tripId}/plan`} onClick={onClose} icon={<LayoutDashboard className="w-5 h-5" />} label="行程規劃" sub="Planning Mode" active={currentPage === 'plan'} color="indigo" />
+              <NavLink href={`/trip/${tripId}/memo`} onClick={onClose} icon={<FileText className="w-5 h-5" />} label="注意事項" sub="Memo" active={currentPage === 'memo'} color="rose" />
               <NavLink href={`/trip/${tripId}/journal`} onClick={onClose} icon={<Book className="w-5 h-5" />} label="每日日記" sub="Journal" active={currentPage === 'journal'} color="amber" />
               <NavLink href={`/trip/${tripId}/expense`} onClick={onClose} icon={<DollarSign className="w-5 h-5" />} label="支出結算" sub="Settlement" active={currentPage === 'expense'} color="emerald" />
               <NavLink href={`/trip/${tripId}/photos`} onClick={onClose} icon={<Camera className="w-5 h-5" />} label="照片紀錄" sub="Gallery" active={currentPage === 'photos'} color="amber" />

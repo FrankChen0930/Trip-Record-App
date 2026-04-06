@@ -5,66 +5,57 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import { useToast } from '@/components/Toast';
-import { DndContext, useDraggable, useDroppable, DragEndEvent, TouchSensor, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay, TouchSensor, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { Trip, ItineraryItem, BucketItem } from '@/lib/types';
-import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin } from 'lucide-react';
+import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown } from 'lucide-react';
 import Modal from '@/components/Modal';
 
-// --- DND Components ---
+// --- DND Draggable Item ---
 function DraggableBucketItem({ item }: { item: BucketItem }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `bucket-${item.id}`,
     data: { type: 'BucketItem', item }
   });
 
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 100 } : undefined;
-
   return (
     <div
-      ref={setNodeRef} style={style} {...listeners} {...attributes}
-      className={`p-3 bg-white border border-gray-100 rounded-xl shadow-sm mb-2 flex items-start gap-2 ${isDragging ? 'opacity-50 ring-2 ring-blue-500 scale-105' : 'hover:shadow-md'} transition-all cursor-grab active:cursor-grabbing`}
+      ref={setNodeRef} {...listeners} {...attributes}
+      className={`p-3 bg-white border border-gray-100 rounded-xl shadow-sm mb-2 flex items-start gap-2 ${isDragging ? 'opacity-50' : 'hover:shadow-md'} transition-all cursor-grab active:cursor-grabbing`}
     >
       <GripVertical className="w-4 h-4 text-gray-300 mt-1 flex-shrink-0" />
       <div>
         <h4 className="font-bold text-sm text-gray-800">{item.title}</h4>
         {item.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{item.note}</p>}
-        {item.price && <p className="text-[10px] text-blue-500 font-mono mt-1 font-bold">${item.price}</p>}
       </div>
     </div>
   );
 }
 
-function DroppableDayColumn({ dayNum, dateStr, items, onRemoveItem }: { dayNum: number, dateStr: string, items: ItineraryItem[], onRemoveItem: (id: string) => void }) {
+// --- Spreadsheet Grid Droppable Cell ---
+function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert }: { dayNum: number, timeStr: string, items: ItineraryItem[], onRemoveItem: (id: string) => void, onInsert: (day: number, time: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: `day-${dayNum}`,
-    data: { day: dayNum }
+    id: `cell-${dayNum}-${timeStr}`,
+    data: { day: dayNum, time: timeStr }
   });
 
   return (
-    <div ref={setNodeRef} className={`flex-none w-72 h-[calc(100vh-200px)] p-4 flex flex-col rounded-[2rem] border-2 transition-colors ${isOver ? 'bg-blue-50/50 border-blue-400 border-dashed' : 'bg-gray-50/50 border-transparent'}`}>
-      <div className="flex items-center gap-2 mb-4 px-2">
-        <span className="text-xl font-black text-gray-900">Day {dayNum}</span>
-        <span className="text-xs text-gray-400 font-bold bg-white px-2 py-0.5 rounded-md shadow-sm">{dateStr}</span>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-        {items.length === 0 && !isOver && (
-          <div className="h-24 border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center text-gray-400 text-xs font-bold">
-            可拖曳行程至此安排
-          </div>
-        )}
+    <div ref={setNodeRef} className={`h-28 border-b border-r border-gray-100 p-1.5 relative group ${isOver ? 'bg-blue-50/50 ring-2 ring-inset ring-blue-400' : 'bg-transparent'} transition-colors flex flex-col gap-1 overflow-y-auto custom-scrollbar`}>
+      {/* Insert Button (Faint on hover) */}
+      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-gray-50/20 backdrop-blur-[1px] transition-all z-0">
+        <div className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-blue-500 hover:scale-110 active:scale-95"><Plus className="w-4 h-4"/></div>
+      </button>
+
+      {/* Render mapped items */}
+      <div className="relative z-10 flex flex-col gap-1">
         {items.map(item => (
-          <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative group">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-[10px] font-black font-mono text-white bg-gray-900 px-2 py-0.5 rounded-lg shadow-sm">
-                {item.start_time?.substring(0, 5) || '08:00'}
+          <div key={item.id} className="bg-white p-2 rounded-lg shadow-sm border border-gray-200 relative group/item hover:border-blue-300 transition-colors">
+            <div className="flex justify-between items-start mb-1">
+              <span className="text-[9px] font-black font-mono text-white bg-gray-900 px-1.5 py-0.5 rounded shadow-sm">
+                {item.start_time?.substring(0, 5) || timeStr}
               </span>
-              <button onClick={() => onRemoveItem(item.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-3 h-3" /></button>
+              <button onClick={(e) => { e.stopPropagation(); onRemoveItem(item.id); }} className="text-gray-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all z-20"><Trash2 className="w-3 h-3" /></button>
             </div>
-            <h4 className="font-bold text-sm text-gray-900 mb-1">{item.location}</h4>
-            <div className="flex items-center gap-1 text-[10px] text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-lg inline-flex">
-              <MapPin className="w-3 h-3" /> {item.transport_type}
-            </div>
+            <h4 className="font-bold text-[11px] text-gray-900 leading-tight">{item.location}</h4>
           </div>
         ))}
       </div>
@@ -83,11 +74,24 @@ export default function PlanPage() {
   const [bucketList, setBucketList] = useState<BucketItem[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   
-  // Add bucket item modal states
+  // Grid State
+  const [startHour, setStartHour] = useState(7);
+  const [endHour, setEndHour] = useState(21);
+  const [showDayZero, setShowDayZero] = useState(false);
+
+  // Add Bucket Item Modal
   const [isAddOpen, setAddOpen] = useState(false);
   const [bucketTitle, setBucketTitle] = useState('');
   const [bucketCategory, setBucketCategory] = useState<'accommodation'|'attraction'|'note'>('attraction');
-  
+
+  // Insert Itinerary Item Modal
+  const [isInsertOpen, setInsertOpen] = useState(false);
+  const [insertDay, setInsertDay] = useState(1);
+  const [insertTime, setInsertTime] = useState('08:00');
+  const [insertTitle, setInsertTitle] = useState('');
+
+  const [activeDragItem, setActiveDragItem] = useState<BucketItem | null>(null);
+
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 5 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } });
   const sensors = useSensors(mouseSensor, touchSensor);
@@ -113,39 +117,70 @@ export default function PlanPage() {
     const end = new Date(tripInfo.end_date);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return Array.from({ length: diffDays }, (_, i) => i + 1);
-  }, [tripInfo]);
+    const daysArr = Array.from({ length: diffDays }, (_, i) => i + 1);
+    return showDayZero ? [0, ...daysArr] : daysArr;
+  }, [tripInfo, showDayZero]);
+
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let h = startHour; h <= endHour; h++) {
+      slots.push(`${h.toString().padStart(2, '0')}:00`);
+      if (h !== endHour) {
+        slots.push(`${h.toString().padStart(2, '0')}:30`);
+      }
+    }
+    return slots;
+  }, [startHour, endHour]);
 
   const getDayDate = (dayNum: number) => {
     if (!tripInfo?.start_date) return '';
+    if (dayNum === 0) return '行前準備';
     const date = new Date(tripInfo.start_date);
     date.setDate(date.getDate() + dayNum - 1);
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     return `${date.getMonth() + 1}/${date.getDate()} (${weekdays[date.getDay()]})`;
   };
 
+  const getSlotItems = (day: number, slot: string) => {
+    return itinerary.filter(i => {
+      if (i.day !== day) return false;
+      const t = i.start_time || '08:00:00';
+      const m = parseInt(t.substring(3, 5), 10);
+      const mappedTime = `${t.substring(0, 2)}:${m < 30 ? '00' : '30'}`;
+      return mappedTime === slot;
+    });
+  };
+
+  const handleDragStart = (event: any) => {
+    const { active } = event;
+    if (active.data.current?.type === 'BucketItem') {
+      setActiveDragItem(active.data.current.item);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
 
-    if (active.id.toString().startsWith('bucket-') && over.id.toString().startsWith('day-')) {
+    if (active.id.toString().startsWith('bucket-') && over.id.toString().startsWith('cell-')) {
       const bucketItem = bucketList.find(b => `bucket-${b.id}` === active.id);
-      const targetDay = over.data.current?.day;
-      if (!bucketItem || !targetDay) return;
+      const cellDay = over.data.current?.day;
+      const cellTime = over.data.current?.time;
+      if (!bucketItem || cellDay === undefined || !cellTime) return;
 
-      // Optimistic Update
       const tempId = `temp-${Date.now()}`;
       const newItItem: ItineraryItem = {
         id: tempId,
         trip_id: tripId as string,
-        day: targetDay,
-        start_time: '08:00',
+        day: cellDay,
+        start_time: cellTime,
         end_time: null,
         location: bucketItem.title,
         transport_type: '機車',
         item_type: 'activity',
-        note: bucketItem.note,
-        map_url: bucketItem.link
+        note: bucketItem.note ?? null,
+        map_url: bucketItem.link ?? null
       };
       
       setItinerary(prev => [...prev, newItItem]);
@@ -153,13 +188,12 @@ export default function PlanPage() {
 
       try {
         await supabase.from('trip_itinerary').insert([{ ...newItItem, id: undefined }]);
-        // Keep in bucket list or delete? It says "assignment", let's delete from bucket list to clean it up
         await supabase.from('trip_bucket_list').delete().eq('id', bucketItem.id);
-        fetchData(); // Sync exact IDs
-        toast('行程已指派', 'success');
+        fetchData();
+        toast('行程已建立', 'success');
       } catch (err: any) {
         toast('指派失敗', 'error');
-        fetchData(); // Rollback
+        fetchData();
       }
     }
   };
@@ -185,21 +219,56 @@ export default function PlanPage() {
     } catch (e: any) {
       toast('新增失敗', 'error');
     }
-  }
+  };
+
+  const openInsertModal = (day: number, timeStr: string) => {
+    setInsertDay(day);
+    setInsertTime(timeStr);
+    setInsertTitle('');
+    setInsertOpen(true);
+  };
+
+  const submitInsertModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!insertTitle) return;
+    try {
+      await supabase.from('trip_itinerary').insert([{
+        trip_id: tripId,
+        day: insertDay,
+        start_time: insertTime,
+        location: insertTitle,
+        item_type: 'activity',
+        transport_type: '機車'
+      }]);
+      setInsertTitle('');
+      setInsertOpen(false);
+      fetchData();
+      toast('行程已新增', 'success');
+    } catch(e) {
+      toast('新增失敗', 'error');
+    }
+  };
 
   return (
     <div className="bg-white min-h-screen text-black flex flex-col font-sans overflow-hidden">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="plan" />
 
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white shadow-sm z-10 flex-shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white shadow-sm z-20 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors">
             <Menu className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="font-black text-lg text-gray-900 tracking-tight">行程規劃模式</h1>
-            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{tripInfo?.name}</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="font-black text-lg text-gray-900 tracking-tight">行事曆規畫模式 (Beta)</h1>
+              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{tripInfo?.name}</p>
+            </div>
+            <div className="h-6 w-px bg-gray-200 mx-2"></div>
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+              <input type="checkbox" checked={showDayZero} onChange={e => setShowDayZero(e.target.checked)} className="accent-indigo-500" />
+              Day 0 (行前準備)
+            </label>
           </div>
         </div>
         <button onClick={() => router.push(`/trip/${tripId}`)} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors flex items-center gap-1 shadow-sm">
@@ -207,25 +276,64 @@ export default function PlanPage() {
         </button>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex-1 flex overflow-hidden">
           
-          {/* Kanban Board (Left/Scrollable) */}
-          <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-white p-4">
-            <div className="flex gap-4 h-full">
-              {days.map(d => (
-                <DroppableDayColumn 
-                  key={d} dayNum={d} dateStr={getDayDate(d)} 
-                  items={itinerary.filter(i => i.day === d)} 
-                  onRemoveItem={handleRemoveItinerary}
-                />
-              ))}
+          {/* Spreadsheet Board (Left/Scrollable Matrix) */}
+          <div className="flex-1 overflow-auto custom-scrollbar bg-gray-50/50 p-6 flex justify-center">
+            
+            <div className="bg-white border text-gray-800 border-gray-200 rounded-[2rem] shadow-sm flex flex-col overflow-hidden max-w-full">
+              
+              {/* Header Row (Days) */}
+              <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+                 <div className="w-20 border-r border-gray-200 flex-shrink-0 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-gray-300" />
+                 </div>
+                 {days.map(d => (
+                   <div key={d} className="w-48 border-r border-gray-200 flex-shrink-0 p-3 flex flex-col items-center justify-center">
+                     <span className="text-sm font-black text-gray-900">Day {d}</span>
+                     <span className="text-[10px] text-gray-400 font-bold mt-0.5">{getDayDate(d)}</span>
+                   </div>
+                 ))}
+              </div>
+
+              {/* Grid Body */}
+              <div className="flex relative">
+                 {/* Y-Axis: Time Slots */}
+                 <div className="w-20 flex-shrink-0 bg-white z-0 flex flex-col border-r border-gray-200">
+                    <button onClick={() => setStartHour(Math.max(0, startHour - 1))} className="h-8 bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 border-b border-gray-100 transition-colors" title="較早時間"><ChevronUp className="w-4 h-4"/></button>
+                    {timeSlots.map(t => (
+                      <div key={t} className="h-28 border-b border-gray-100 flex items-start justify-center p-2">
+                        <span className="text-[10px] font-mono font-bold text-gray-400">{t}</span>
+                      </div>
+                    ))}
+                    <button onClick={() => setEndHour(Math.min(23, endHour + 1))} className="h-8 bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors" title="較晚時間"><ChevronDown className="w-4 h-4"/></button>
+                 </div>
+
+                 {/* Columns */}
+                 {days.map(d => (
+                   <div key={d} className="w-48 flex-shrink-0 flex flex-col bg-white">
+                     <div className="h-8 border-b border-r border-gray-100 bg-gray-50/50"></div>
+                     {timeSlots.map(t => (
+                       <DroppableTimeCell 
+                         key={`${d}-${t}`} dayNum={d} timeStr={t} 
+                         items={getSlotItems(d, t)} 
+                         onRemoveItem={handleRemoveItinerary}
+                         onInsert={openInsertModal}
+                       />
+                     ))}
+                     <div className="h-8 bg-gray-50/50 border-r border-gray-100"></div>
+                   </div>
+                 ))}
+              </div>
+
             </div>
+
           </div>
 
           {/* Bucket List Sidebar (Right) */}
-          <div className="w-72 bg-gray-50 border-l border-gray-100 flex flex-col flex-shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
-            <div className="p-4 border-b border-gray-100 bg-white flex justify-between items-center">
+          <div className="w-64 bg-gray-50 border-l border-gray-100 flex flex-col flex-shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10">
+            <div className="p-4 border-b border-gray-100 bg-white flex justify-between items-center z-10 shadow-sm relative">
               <div>
                 <h3 className="font-black text-gray-900 flex items-center gap-2"><Navigation className="w-4 h-4 text-indigo-500" /> 備選池</h3>
                 <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-widest">拖曳項目至行程表</p>
@@ -235,22 +343,16 @@ export default function PlanPage() {
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
               <div className="mb-6">
-                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">景點 / 美食</h4>
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">景點 / 美食</h4>
                 {bucketList.filter(b => b.category === 'attraction').map(item => (
                   <DraggableBucketItem key={item.id} item={item} />
                 ))}
               </div>
               <div className="mb-6">
-                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">住宿</h4>
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">住宿</h4>
                 {bucketList.filter(b => b.category === 'accommodation').map(item => (
-                  <DraggableBucketItem key={item.id} item={item} />
-                ))}
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">備忘錄</h4>
-                {bucketList.filter(b => b.category === 'note').map(item => (
                   <DraggableBucketItem key={item.id} item={item} />
                 ))}
               </div>
@@ -258,6 +360,18 @@ export default function PlanPage() {
           </div>
 
         </div>
+
+        {/* Drag Overlay for smooth Visual Feedback */}
+        <DragOverlay>
+          {activeDragItem ? (
+            <div className="p-3 bg-white border-2 border-indigo-500 rounded-xl shadow-2xl flex items-start gap-2 rotate-3 scale-105 opacity-90 w-48">
+              <GripVertical className="w-4 h-4 text-gray-300 mt-1 flex-shrink-0" />
+              <div>
+                <h4 className="font-bold text-sm text-gray-800">{activeDragItem.title}</h4>
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       {/* Add Bucket Item Modal */}
@@ -267,7 +381,6 @@ export default function PlanPage() {
             <div className="flex gap-2">
               <button type="button" onClick={() => setBucketCategory('attraction')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${bucketCategory === 'attraction' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'}`}>景點/美食</button>
               <button type="button" onClick={() => setBucketCategory('accommodation')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${bucketCategory === 'accommodation' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'}`}>住宿</button>
-              <button type="button" onClick={() => setBucketCategory('note')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${bucketCategory === 'note' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'}`}>備忘錄</button>
             </div>
             <input 
               value={bucketTitle} onChange={e => setBucketTitle(e.target.value)} 
@@ -276,6 +389,28 @@ export default function PlanPage() {
               autoFocus
             />
             <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700">新增</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Insert Event Modal */}
+      <Modal isOpen={isInsertOpen} onClose={() => setInsertOpen(false)} title="安插行程">
+        <form onSubmit={submitInsertModal}>
+          <div className="space-y-4">
+            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex items-center justify-between text-xs font-bold text-blue-800">
+               <span>Day {insertDay}</span>
+               <span className="font-mono bg-blue-100 px-2 py-1 rounded-lg">{insertTime}</span>
+            </div>
+            <div className="flex gap-2">
+              <input type="time" value={insertTime} onChange={e => setInsertTime(e.target.value)} className="bg-gray-50 p-4 rounded-xl outline-none font-bold font-mono focus:ring-2 focus:ring-blue-500 w-1/3" />
+              <input 
+                value={insertTitle} onChange={e => setInsertTitle(e.target.value)} 
+                placeholder="行程名稱" 
+                className="w-2/3 bg-gray-50 p-4 rounded-xl outline-none font-bold focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800">儲存</button>
           </div>
         </form>
       </Modal>
