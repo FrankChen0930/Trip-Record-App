@@ -70,10 +70,22 @@ export interface TripMemo {
   id: string;
   trip_id: string;
   member_id: string | null;
+  title?: string;
   content: string;
   is_checked: boolean;
   type: 'text' | 'heading1' | 'todo';
   sort_order: number;
+  created_at: string;
+}
+
+export interface TripAccommodation {
+  id: string;
+  trip_id: string;
+  day: number;
+  name: string;
+  map_url?: string;
+  booking_url?: string;
+  note?: string;
   created_at: string;
 }
 

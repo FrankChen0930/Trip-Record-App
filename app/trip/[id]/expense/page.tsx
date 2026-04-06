@@ -32,6 +32,7 @@ export default function TripExpensePage() {
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal');
   const [splitDetails, setSplitDetails] = useState<Record<string, string>>({});
+  const [selectedLedgerMember, setSelectedLedgerMember] = useState<string>('');
 
   const fetchData = async () => {
     const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
@@ -329,6 +330,74 @@ export default function TripExpensePage() {
                 <Receipt className="w-8 h-8 text-emerald-300 mx-auto mb-2 opacity-50" />
                 <p className="text-gray-400 italic text-sm font-medium">目前帳目已平清</p>
               </div>
+            )}
+          </div>
+
+          {/* 成員個人紀錄 (Member Ledger) */}
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm mb-6 border border-gray-100">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2 py-1 bg-gray-50 rounded-lg">個人花費紀錄</h2>
+              <select value={selectedLedgerMember} onChange={e => setSelectedLedgerMember(e.target.value)} className="bg-gray-50 border-none rounded-xl px-3 py-1 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-100 transition-colors">
+                <option value="">選擇成員...</option>
+                {members.map(m => (
+                  <option key={m.id} value={m.nickname}>{m.nickname}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedLedgerMember ? (() => {
+              const memberTxs = expenses.filter(e => !e.is_transfer && (e.payer === selectedLedgerMember || e.participants.includes(selectedLedgerMember)));
+              const totalPaid = memberTxs.filter(e => e.payer === selectedLedgerMember).reduce((acc, e) => acc + Number(e.amount), 0);
+              const totalOwed = memberTxs.reduce((acc, e) => {
+                if (e.split_type === 'custom' && e.split_details?.[selectedLedgerMember]) {
+                  return acc + Number(e.split_details[selectedLedgerMember]);
+                } else if (e.participants.includes(selectedLedgerMember)) {
+                  return acc + (Number(e.amount) / e.participants.length);
+                }
+                return acc;
+              }, 0);
+
+              return (
+                <div className="space-y-4">
+                  <div className="flex gap-4 mb-4">
+                    <div className="flex-1 bg-blue-50 p-3 rounded-xl flex flex-col items-center">
+                       <span className="text-[10px] font-bold text-blue-400">總墊付</span>
+                       <span className="font-mono font-black text-blue-600 text-lg">${totalPaid.toFixed(0)}</span>
+                    </div>
+                    <div className="flex-1 bg-red-50 p-3 rounded-xl flex flex-col items-center">
+                       <span className="text-[10px] font-bold text-red-400">總分攤 (應付)</span>
+                       <span className="font-mono font-black text-red-600 text-lg">${totalOwed.toFixed(0)}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                    {memberTxs.map(exp => {
+                       let myShare = 0;
+                       if (exp.split_type === 'custom' && exp.split_details?.[selectedLedgerMember]) {
+                         myShare = Number(exp.split_details[selectedLedgerMember]);
+                       } else if (exp.participants.includes(selectedLedgerMember)) {
+                         myShare = Number(exp.amount) / exp.participants.length;
+                       }
+                       const iPaid = exp.payer === selectedLedgerMember;
+                       
+                       return (
+                         <div key={exp.id} className="flex justify-between items-center text-sm p-3 bg-gray-50/50 rounded-xl border border-transparent hover:border-gray-100 transition-colors">
+                           <div className="flex flex-col">
+                             <span className="font-bold text-gray-800 text-xs">{exp.item_name}</span>
+                             <span className="text-[9px] text-gray-400 font-bold">{new Date(exp.created_at).toLocaleDateString()}</span>
+                           </div>
+                           <div className="flex items-center gap-4 text-right">
+                             {myShare > 0 && <div className="flex flex-col items-end"><span className="text-[9px] text-red-300 font-black tracking-widest uppercase mb-0.5">被分攤</span><span className="font-mono text-red-500 font-black leading-none">${myShare.toFixed(0)}</span></div>}
+                             {iPaid && <div className="flex flex-col items-end"><span className="text-[9px] text-blue-300 font-black tracking-widest uppercase mb-0.5">代墊</span><span className="font-mono text-blue-600 font-black leading-none">${Number(exp.amount).toFixed(0)}</span></div>}
+                           </div>
+                         </div>
+                       );
+                    })}
+                    {memberTxs.length === 0 && <p className="text-center text-xs text-gray-400 py-4 font-bold">目前沒有相關花費紀錄</p>}
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="text-center py-6 text-xs text-gray-400 font-bold bg-gray-50 rounded-xl border border-dashed border-gray-200">請選擇上方選單以查看個人帳本明細</div>
             )}
           </div>
 

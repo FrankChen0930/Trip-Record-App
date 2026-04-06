@@ -6,8 +6,8 @@ import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import { useToast } from '@/components/Toast';
 import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay, TouchSensor, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
-import type { Trip, ItineraryItem, BucketItem } from '@/lib/types';
-import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown } from 'lucide-react';
+import type { Trip, ItineraryItem, BucketItem, TripAccommodation } from '@/lib/types';
+import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown, Bed, Edit2, Link as LinkIcon } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 // --- DND Draggable Item ---
@@ -40,13 +40,13 @@ function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert }: {
 
   return (
     <div ref={setNodeRef} className={`h-28 border-b border-r border-gray-100 p-1.5 relative group ${isOver ? 'bg-blue-50/50 ring-2 ring-inset ring-blue-400' : 'bg-transparent'} transition-colors flex flex-col gap-1 overflow-y-auto custom-scrollbar`}>
-      {/* Insert Button (Faint on hover) */}
-      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-gray-50/20 backdrop-blur-[1px] transition-all z-0">
-        <div className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-blue-500 hover:scale-110 active:scale-95"><Plus className="w-4 h-4"/></div>
+      {/* Insert Button (High z-index, Bottom Right) */}
+      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-blue-500 hover:text-white hover:bg-blue-500 opacity-0 group-hover:opacity-100 transition-all z-50">
+        <Plus className="w-3 h-3"/>
       </button>
 
       {/* Render mapped items */}
-      <div className="relative z-10 flex flex-col gap-1">
+      <div className="relative z-10 flex flex-col gap-1 flex-1 pb-6 w-full">
         {items.map(item => (
           <div key={item.id} className="bg-white p-2 rounded-lg shadow-sm border border-gray-200 relative group/item hover:border-blue-300 transition-colors">
             <div className="flex justify-between items-start mb-1">
@@ -63,6 +63,63 @@ function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert }: {
   );
 }
 
+// --- Daily Accommodation Block ---
+function AccommodationCell({ day, data, tripId, onUpdate }: { day: number, data?: TripAccommodation, tripId: string, onUpdate: () => void }) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(data?.name || '');
+  const [mapUrl, setMapUrl] = useState(data?.map_url || '');
+  const [bookingUrl, setBookingUrl] = useState(data?.booking_url || '');
+
+  useEffect(() => {
+    setName(data?.name || '');
+    setMapUrl(data?.map_url || '');
+    setBookingUrl(data?.booking_url || '');
+  }, [data]);
+
+  const handleSave = async () => {
+    if (!name) return;
+    try {
+      if (data?.id) {
+        await supabase.from('trip_accommodations').update({ name, map_url: mapUrl, booking_url: bookingUrl }).eq('id', data.id);
+      } else {
+        await supabase.from('trip_accommodations').insert([{ trip_id: tripId, day, name, map_url: mapUrl, booking_url: bookingUrl }]);
+      }
+      toast('住宿已更新', 'success');
+      setIsEditing(false);
+      onUpdate();
+    } catch(e: any) {
+      toast('儲存失敗', 'error');
+    }
+  };
+
+  return (
+    <div className="border-b border-r border-gray-100 p-3 bg-indigo-50/30 flex flex-col min-h-[120px]">
+       <div className="flex justify-between items-center mb-2">
+         <span className="flex items-center gap-1 text-indigo-600 font-bold text-[11px] tracking-widest"><Bed className="w-3.5 h-3.5" /> 本日住宿</span>
+         {data?.id && !isEditing && <button onClick={() => setIsEditing(true)} className="text-gray-400 hover:text-indigo-600 p-1"><Edit2 className="w-3 h-3"/></button>}
+       </div>
+       {isEditing || !data?.id ? (
+         <div className="flex flex-col gap-1.5 focus-within:z-10 mt-1">
+           <input value={name} onChange={e => setName(e.target.value)} placeholder="住宿名稱" className="text-xs p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400" />
+           <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} placeholder="網址 (地圖)" className="text-[10px] p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400" />
+           <input value={bookingUrl} onChange={e => setBookingUrl(e.target.value)} placeholder="網址 (訂房網)" className="text-[10px] p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400" />
+           <div className="flex gap-1 mt-1">
+             <button onClick={handleSave} className="flex-1 py-1.5 bg-indigo-600 text-white font-bold text-[10px] rounded-lg hover:bg-indigo-700 shadow-sm transition">儲存</button>
+             {(isEditing && data?.id) && <button onClick={() => setIsEditing(false)} className="flex-1 py-1.5 bg-gray-100 text-gray-600 font-bold text-[10px] rounded-lg hover:bg-gray-200 transition">取消</button>}
+           </div>
+         </div>
+       ) : (
+         <div className="flex flex-col gap-1 mt-1">
+           <h4 className="font-bold text-[13px] text-gray-900 leading-tight mb-1">{data?.name}</h4>
+           {data?.map_url && <a href={data.map_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1 bg-white p-1.5 rounded border border-indigo-50 shadow-sm"><Map className="w-3 h-3"/> 地圖導航</a>}
+           {data?.booking_url && <a href={data.booking_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-orange-500 hover:text-orange-600 font-medium flex items-center gap-1 bg-white p-1.5 rounded border border-orange-50 shadow-sm"><LinkIcon className="w-3 h-3"/> 訂房資訊</a>}
+         </div>
+       )}
+    </div>
+  );
+}
+
 // --- Main Page ---
 export default function PlanPage() {
   const { id: tripId } = useParams();
@@ -71,6 +128,7 @@ export default function PlanPage() {
 
   const [tripInfo, setTripInfo] = useState<Trip | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
+  const [accommodations, setAccommodations] = useState<TripAccommodation[]>([]);
   const [bucketList, setBucketList] = useState<BucketItem[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   
@@ -102,6 +160,9 @@ export default function PlanPage() {
 
     const { data: it } = await supabase.from('trip_itinerary').select('*').eq('trip_id', tripId).order('start_time');
     setItinerary(it || []);
+
+    const { data: acc } = await supabase.from('trip_accommodations').select('*').eq('trip_id', tripId);
+    setAccommodations(acc || []);
 
     const { data: bl } = await supabase.from('trip_bucket_list').select('*').eq('trip_id', tripId).order('created_at', { ascending: false });
     setBucketList(bl || []);
@@ -308,6 +369,9 @@ export default function PlanPage() {
                       </div>
                     ))}
                     <button onClick={() => setEndHour(Math.min(23, endHour + 1))} className="h-8 bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors" title="較晚時間"><ChevronDown className="w-4 h-4"/></button>
+                    
+                    {/* Placeholder for Accommodation row */}
+                    <div className="flex-1 min-h-[120px] bg-white border-r border-gray-200 border-b border-gray-100"></div>
                  </div>
 
                  {/* Columns */}
@@ -322,7 +386,8 @@ export default function PlanPage() {
                          onInsert={openInsertModal}
                        />
                      ))}
-                     <div className="h-8 bg-gray-50/50 border-r border-gray-100"></div>
+                     <AccommodationCell day={d} data={accommodations.find(a => a.day === d)} tripId={tripId as string} onUpdate={fetchData} />
+                     <div className="h-8 bg-gray-50/50 border-r border-gray-100 border-b"></div>
                    </div>
                  ))}
               </div>

@@ -10,12 +10,13 @@ import SpreadsheetImport from '@/components/SpreadsheetImport';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ItinerarySkeleton } from '@/components/Skeleton';
-import type { Trip, ItineraryItem, Member } from '@/lib/types';
-import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket } from 'lucide-react';
+import type { Trip, ItineraryItem, Member, TripAccommodation } from '@/lib/types';
+import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket, Bed } from 'lucide-react';
 
 export default function TripMasterPage() {
   const { id: tripId } = useParams();
   const [data, setData] = useState<ItineraryItem[]>([]);
+  const [accommodations, setAccommodations] = useState<TripAccommodation[]>([]);
   const [tripInfo, setTripInfo] = useState<Trip | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,7 @@ export default function TripMasterPage() {
       .order('day').order('start_time');
 
     const { data: statuses } = await supabase.from('trip_member_ticket_status').select('*');
+    const { data: accs } = await supabase.from('trip_accommodations').select('*').eq('trip_id', tripId);
 
     const enrichedData = itinerary?.map(item => ({
       ...item,
@@ -67,6 +69,7 @@ export default function TripMasterPage() {
     }));
 
     setData(enrichedData || []);
+    setAccommodations(accs || []);
     setLoading(false);
   };
 
@@ -389,6 +392,27 @@ export default function TripMasterPage() {
                 </div>
               )}
             </div>
+
+            {/* 專屬住宿卡片 */}
+            {!loading && (() => {
+              const todaysAcc = accommodations.find(a => a.day === activeDay);
+              if (!todaysAcc) return null;
+              return (
+                <div className="relative pl-32 mt-12 mb-10 group">
+                  <div className="absolute left-[36px] top-6 w-8 h-8 rounded-full border-4 border-gray-50 bg-indigo-500 z-30 shadow-[0_0_15px_rgba(99,102,241,0.4)] flex items-center justify-center text-white">
+                    <Bed className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/90 p-6 rounded-[2rem] border border-indigo-100 shadow-[0_8px_30px_rgba(99,102,241,0.06)] relative overflow-hidden">
+                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-100/50 px-3 py-1 rounded-full mb-3 inline-block">本日住宿 Accommodation</span>
+                    <h3 className="text-xl font-black text-indigo-950 mb-4">{todaysAcc.name}</h3>
+                    <div className="flex gap-3">
+                      {todaysAcc.map_url && <a href={todaysAcc.map_url} target="_blank" className="flex items-center gap-1.5 px-4 py-2 bg-white text-indigo-600 font-bold text-xs rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all"><MapPin className="w-4 h-4"/> 地圖導航</a>}
+                      {todaysAcc.booking_url && <a href={todaysAcc.booking_url} target="_blank" className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white font-bold text-xs rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all"><Link2 className="w-4 h-4"/> 訂房資訊</a>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
