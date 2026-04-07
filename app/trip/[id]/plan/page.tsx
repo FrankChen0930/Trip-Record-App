@@ -137,6 +137,20 @@ export default function PlanPage() {
   const [endHour, setEndHour] = useState(21);
   const [showDayZero, setShowDayZero] = useState(false);
 
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(`trip_${tripId}_dayZero`);
+      if (saved === 'true') setShowDayZero(true);
+    }
+  }, [tripId]);
+
+  const handleToggleDayZero = (checked: boolean) => {
+    setShowDayZero(checked);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`trip_${tripId}_dayZero`, checked.toString());
+    }
+  };
+
   // Add Bucket Item Modal
   const [isAddOpen, setAddOpen] = useState(false);
   const [bucketTitle, setBucketTitle] = useState('');
@@ -339,7 +353,7 @@ export default function PlanPage() {
             </div>
             <div className="h-6 w-px bg-gray-200 mx-2"></div>
             <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
-              <input type="checkbox" checked={showDayZero} onChange={e => setShowDayZero(e.target.checked)} className="accent-indigo-500" />
+              <input type="checkbox" checked={showDayZero} onChange={e => handleToggleDayZero(e.target.checked)} className="accent-indigo-500" />
               從 Day 0 開始計算
             </label>
           </div>

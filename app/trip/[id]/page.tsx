@@ -26,6 +26,7 @@ export default function TripMasterPage() {
   const [scrollY, setScrollY] = useState(0);
   const [isImportOpen, setImportOpen] = useState(false);
   const [activeDay, setActiveDay] = useState(1);
+  const [showDayZero, setShowDayZero] = useState(false);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -90,6 +91,16 @@ export default function TripMasterPage() {
     };
   }, [tripId]);
 
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(`trip_${tripId}_dayZero`);
+      if (saved === 'true') {
+        setShowDayZero(true);
+        if (activeDay === 1) setActiveDay(0);
+      }
+    }
+  }, [tripId]);
+
   const memberNicknames = useMemo(() => members.map(m => m.nickname), [members]);
 
   const updateMemberTicket = async (itinerary_id: string, member_name: string, ticket_link: string | null, is_ready: boolean) => {
@@ -107,14 +118,14 @@ export default function TripMasterPage() {
     const end = new Date(tripInfo.end_date);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return Array.from({ length: diffDays }, (_, i) => i + 1);
-  }, [tripInfo]);
+    return Array.from({ length: diffDays }, (_, i) => showDayZero ? i : i + 1);
+  }, [tripInfo, showDayZero]);
 
   // 計算每天的實際日期
   const getDayDate = (dayNum: number) => {
     if (!tripInfo?.start_date) return '';
     const date = new Date(tripInfo.start_date);
-    date.setDate(date.getDate() + dayNum - 1);
+    date.setDate(date.getDate() + dayNum - (showDayZero ? 0 : 1));
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     return `${date.getMonth() + 1}/${date.getDate()} ${weekdays[date.getDay()]}`;
   };

@@ -19,6 +19,7 @@ export default function PhotoArchivePage() {
   const [activeDay, setActiveDay] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [inputUrl, setInputUrl] = useState('');
+  const [showDayZero, setShowDayZero] = useState(false);
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
@@ -36,6 +37,16 @@ export default function PhotoArchivePage() {
 
   useEffect(() => { fetchData(); }, [tripId]);
 
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(`trip_${tripId}_dayZero`);
+      if (saved === 'true') {
+        setShowDayZero(true);
+        if (activeDay === 1) setActiveDay(0);
+      }
+    }
+  }, [tripId]);
+
   // 動態天數計算（修正寫死 14 天的問題）
   const days = useMemo(() => {
     if (!tripInfo?.start_date || !tripInfo?.end_date) return [1];
@@ -43,13 +54,13 @@ export default function PhotoArchivePage() {
     const end = new Date(tripInfo.end_date);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return Array.from({ length: diffDays }, (_, i) => i + 1);
-  }, [tripInfo]);
+    return Array.from({ length: diffDays }, (_, i) => showDayZero ? i : i + 1);
+  }, [tripInfo, showDayZero]);
 
   const getDayDate = (dayNum: number) => {
     if (!tripInfo?.start_date) return '';
     const date = new Date(tripInfo.start_date);
-    date.setDate(date.getDate() + dayNum - 1);
+    date.setDate(date.getDate() + dayNum - (showDayZero ? 0 : 1));
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 

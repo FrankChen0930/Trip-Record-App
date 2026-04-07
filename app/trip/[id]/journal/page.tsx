@@ -14,6 +14,7 @@ export default function JournalPage() {
   const [journals, setJournals] = useState<Journal[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [activeDay, setActiveDay] = useState(1);
+  const [showDayZero, setShowDayZero] = useState(false);
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -29,18 +30,28 @@ export default function JournalPage() {
 
   useEffect(() => { fetchData(); }, [tripId]);
 
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(`trip_${tripId}_dayZero`);
+      if (saved === 'true') {
+        setShowDayZero(true);
+        if (activeDay === 1) setActiveDay(0);
+      }
+    }
+  }, [tripId]);
+
   const days = useMemo(() => {
     if (!tripInfo?.start_date || !tripInfo?.end_date) return [1];
     const start = new Date(tripInfo.start_date);
     const end = new Date(tripInfo.end_date);
     const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return Array.from({ length: diffDays }, (_, i) => i + 1);
-  }, [tripInfo]);
+    return Array.from({ length: diffDays }, (_, i) => showDayZero ? i : i + 1);
+  }, [tripInfo, showDayZero]);
 
   const getDayDate = (dayNum: number) => {
     if (!tripInfo?.start_date) return '';
     const date = new Date(tripInfo.start_date);
-    date.setDate(date.getDate() + dayNum - 1);
+    date.setDate(date.getDate() + dayNum - (showDayZero ? 0 : 1));
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     return `${date.getMonth() + 1}/${date.getDate()} ${weekdays[date.getDay()]}`;
   };
