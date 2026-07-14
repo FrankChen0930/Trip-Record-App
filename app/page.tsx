@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
@@ -9,16 +8,23 @@ import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { TripCardSkeleton } from '@/components/Skeleton';
-import type { Trip, Group, GroupMember } from '@/lib/types';
+import type { Trip } from '@/lib/types';
+import { useTrips } from '@/features/trips/hooks/useTrips';
+import { useSaveTrip, useDeleteTrip, useUploadCover } from '@/features/trips/hooks/useTripMutations';
+import { useGroups, useGroupMembers } from '@/features/groups/hooks/useGroups';
 
 export default function HomePage() {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 伺服器資料改由 feature hooks 提供
+  const { data: trips = [], isLoading: loading } = useTrips();
+  const { data: groups = [] } = useGroups();
+  const { data: groupMembers = [] } = useGroupMembers();
+  const saveTrip = useSaveTrip();
+  const deleteTrip = useDeleteTrip();
+  const uploadCover = useUploadCover();
+  const isUploading = uploadCover.isPending;
+
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [activeGroupFilter, setActiveGroupFilter] = useState<string | null>(null); // null = 全部
   const [hasAutoJumped, setHasAutoJumped] = useState(false);
@@ -37,18 +43,7 @@ export default function HomePage() {
   // 當前用戶所屬的群組
   const [myId, setMyId] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    const { data: tripData } = await supabase.from('trips').select('*').order('start_date', { ascending: false });
-    const { data: groupData } = await supabase.from('groups').select('*').order('created_at');
-    const { data: gmData } = await supabase.from('group_members').select('*');
-    setTrips(tripData || []);
-    setGroups(groupData || []);
-    setGroupMembers(gmData || []);
-    setLoading(false);
-  };
-
   useEffect(() => {
-    fetchData();
     setMyId(localStorage.getItem('my_member_id'));
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
@@ -119,16 +114,13 @@ export default function HomePage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `covers/${fileName}`;
-    const { error: uploadError } = await supabase.storage.from('trip-covers').upload(filePath, file);
-    if (uploadError) { toast('圖片上傳失敗：' + uploadError.message, 'error'); setIsUploading(false); return; }
-    const { data } = supabase.storage.from('trip-covers').getPublicUrl(filePath);
-    setCoverUrl(data.publicUrl);
-    setIsUploading(false);
-    toast('封面圖已上傳', 'success');
+    try {
+      const publicUrl = await uploadCover.mutateAsync(file);
+      setCoverUrl(publicUrl);
+      toast('封面圖已上傳', 'success');
+    } catch (error) {
+      toast('圖片上傳失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
   };
 
   const handleSaveTrip = async (e: React.FormEvent) => {
@@ -140,29 +132,11 @@ export default function HomePage() {
       group_id: selectedGroupId || null,
     };
     try {
-      if (editingId) {
-        const { error } = await supabase.from('trips').update(payload).eq('id', editingId);
-        if (error) throw error;
-        toast('旅程變更已儲存', 'success');
-      } else {
-        const { data: newTrip, error } = await supabase.from('trips').insert([payload]).select().single();
-        if (error) throw error;
-        if (endDate && newTrip) {
-          const start = new Date(startDate);
-          const end = new Date(endDate);
-          const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-          const presets = Array.from({ length: diffDays }, (_, i) => ({
-            trip_id: newTrip.id, day: i + 1, start_time: '21:00:00', location: '🏨 預計住宿點',
-            transport_type: '機車', note: '自動生成的預設格，請點擊編輯修改地點。', item_type: 'activity'
-          }));
-          await supabase.from('trip_itinerary').insert(presets);
-        }
-        toast('新旅程已開啟！', 'success');
-      }
+      await saveTrip.mutateAsync({ id: editingId, payload, startDate, endDate });
+      toast(editingId ? '旅程變更已儲存' : '新旅程已開啟！', 'success');
       closeModal();
-      fetchData();
-    } catch (error: any) {
-      toast('儲存失敗：' + error.message, 'error');
+    } catch (error) {
+      toast('儲存失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
@@ -180,9 +154,12 @@ export default function HomePage() {
   const handleDeleteTrip = async (id: string) => {
     const ok = await confirm({ message: '確定要徹底刪除這趟旅程紀錄嗎？此動作無法復原。', confirmText: '刪除', cancelText: '取消', danger: true });
     if (!ok) return;
-    await supabase.from('trips').delete().eq('id', id);
-    toast('旅程已刪除', 'info');
-    fetchData();
+    try {
+      await deleteTrip.mutateAsync(id);
+      toast('旅程已刪除', 'info');
+    } catch (error) {
+      toast('刪除失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
   };
 
   const handleJump = (tripId: string) => {

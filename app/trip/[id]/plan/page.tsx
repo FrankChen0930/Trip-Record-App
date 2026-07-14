@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import { useToast } from '@/components/Toast';
 import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay, TouchSensor, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
-import type { Trip, ItineraryItem, BucketItem, TripAccommodation } from '@/lib/types';
+import type { ItineraryItem, BucketItem, TripAccommodation } from '@/lib/types';
+import { useTrip } from '@/features/trips/hooks/useTrip';
+import { usePlanData } from '@/features/plan/hooks/usePlanData';
+import { useAssignBucket, useInsertItinerary, useRemoveItinerary, useAddBucket, useSaveAccommodation } from '@/features/plan/hooks/usePlanMutations';
 import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown, Bed, Edit2, Link as LinkIcon } from 'lucide-react';
 import Modal from '@/components/Modal';
 
@@ -64,8 +66,9 @@ function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert }: {
 }
 
 // --- Daily Accommodation Block ---
-function AccommodationCell({ day, data, tripId, onUpdate }: { day: number, data?: TripAccommodation, tripId: string, onUpdate: () => void }) {
+function AccommodationCell({ day, data, tripId }: { day: number, data?: TripAccommodation, tripId: string }) {
   const { toast } = useToast();
+  const saveAccommodation = useSaveAccommodation(tripId);
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(data?.name || '');
   const [mapUrl, setMapUrl] = useState(data?.map_url || '');
@@ -80,15 +83,10 @@ function AccommodationCell({ day, data, tripId, onUpdate }: { day: number, data?
   const handleSave = async () => {
     if (!name) return;
     try {
-      if (data?.id) {
-        await supabase.from('trip_accommodations').update({ name, map_url: mapUrl, booking_url: bookingUrl }).eq('id', data.id);
-      } else {
-        await supabase.from('trip_accommodations').insert([{ trip_id: tripId, day, name, map_url: mapUrl, booking_url: bookingUrl }]);
-      }
+      await saveAccommodation.mutateAsync({ id: data?.id ?? null, day, name, mapUrl, bookingUrl });
       toast('住宿已更新', 'success');
       setIsEditing(false);
-      onUpdate();
-    } catch(e: any) {
+    } catch {
       toast('儲存失敗', 'error');
     }
   };
@@ -122,14 +120,21 @@ function AccommodationCell({ day, data, tripId, onUpdate }: { day: number, data?
 
 // --- Main Page ---
 export default function PlanPage() {
-  const { id: tripId } = useParams();
+  const params = useParams();
+  const tripId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { toast } = useToast();
 
-  const [tripInfo, setTripInfo] = useState<Trip | null>(null);
-  const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
-  const [accommodations, setAccommodations] = useState<TripAccommodation[]>([]);
-  const [bucketList, setBucketList] = useState<BucketItem[]>([]);
+  // 伺服器資料改由 feature hooks 提供
+  const { data: tripInfo } = useTrip(tripId);
+  const { data: planData } = usePlanData(tripId);
+  const itinerary = planData?.itinerary ?? [];
+  const accommodations = planData?.accommodations ?? [];
+  const bucketList = planData?.bucketList ?? [];
+  const assignBucket = useAssignBucket(tripId);
+  const insertItinerary = useInsertItinerary(tripId);
+  const removeItinerary = useRemoveItinerary(tripId);
+  const addBucket = useAddBucket(tripId);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   
   // Grid State
@@ -167,24 +172,6 @@ export default function PlanPage() {
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 5 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } });
   const sensors = useSensors(mouseSensor, touchSensor);
-
-  const fetchData = async () => {
-    const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
-    setTripInfo(trip);
-
-    const { data: it } = await supabase.from('trip_itinerary').select('*').eq('trip_id', tripId).order('start_time');
-    setItinerary(it || []);
-
-    const { data: acc } = await supabase.from('trip_accommodations').select('*').eq('trip_id', tripId);
-    setAccommodations(acc || []);
-
-    const { data: bl } = await supabase.from('trip_bucket_list').select('*').eq('trip_id', tripId).order('created_at', { ascending: false });
-    setBucketList(bl || []);
-  };
-
-  useEffect(() => {
-    if (tripId) fetchData();
-  }, [tripId]);
 
   const days = useMemo(() => {
     if (!tripInfo?.start_date || !tripInfo?.end_date) return [1];
@@ -232,7 +219,7 @@ export default function PlanPage() {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
@@ -243,67 +230,26 @@ export default function PlanPage() {
       const cellTime = over.data.current?.time;
       if (!bucketItem || cellDay === undefined || !cellTime) return;
 
-      const tempId = `temp-${Date.now()}`;
-      const newItItem: ItineraryItem = {
-        id: tempId,
-        trip_id: tripId as string,
-        day: cellDay,
-        start_time: cellTime,
-        end_time: null,
-        location: bucketItem.title,
-        transport_type: '機車',
-        item_type: 'activity',
-        note: bucketItem.note ?? null,
-        map_url: bucketItem.link ?? null
-      };
-      
-      setItinerary(prev => [...prev, newItItem]);
-      setBucketList(prev => prev.filter(b => b.id !== bucketItem.id));
-
-      try {
-        const { error: insertError } = await supabase.from('trip_itinerary').insert([{
-          trip_id: tripId,
-          day: cellDay,
-          start_time: cellTime,
-          location: bucketItem.title,
-          transport_type: '機車',
-          item_type: 'activity',
-          note: bucketItem.note || null,
-          map_url: bucketItem.link || null
-        }]);
-        if (insertError) throw insertError;
-
-        const { error: deleteError } = await supabase.from('trip_bucket_list').delete().eq('id', bucketItem.id);
-        if (deleteError) throw deleteError;
-
-        toast('行程已建立', 'success');
-      } catch (err: any) {
-        toast('指派失敗: ' + err.message, 'error');
-      } finally {
-        fetchData();
-      }
+      assignBucket.mutate({ bucketItem, day: cellDay, time: cellTime }, {
+        onSuccess: () => toast('行程已建立', 'success'),
+        onError: (err) => toast('指派失敗: ' + (err instanceof Error ? err.message : '未知錯誤'), 'error'),
+      });
     }
   };
 
-  const handleRemoveItinerary = async (id: string) => {
-    await supabase.from('trip_itinerary').delete().eq('id', id);
-    fetchData();
+  const handleRemoveItinerary = (id: string) => {
+    removeItinerary.mutate(id);
   };
 
   const handleAddBucketItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bucketTitle) return;
     try {
-      await supabase.from('trip_bucket_list').insert([{
-        trip_id: tripId,
-        category: bucketCategory,
-        title: bucketTitle
-      }]);
+      await addBucket.mutateAsync({ trip_id: tripId, category: bucketCategory, title: bucketTitle });
       setBucketTitle('');
       setAddOpen(false);
-      fetchData();
       toast('已新增至備選池', 'success');
-    } catch (e: any) {
+    } catch {
       toast('新增失敗', 'error');
     }
   };
@@ -319,19 +265,11 @@ export default function PlanPage() {
     e.preventDefault();
     if(!insertTitle) return;
     try {
-      await supabase.from('trip_itinerary').insert([{
-        trip_id: tripId,
-        day: insertDay,
-        start_time: insertTime,
-        location: insertTitle,
-        item_type: 'activity',
-        transport_type: '機車'
-      }]);
+      await insertItinerary.mutateAsync({ day: insertDay, time: insertTime, title: insertTitle });
       setInsertTitle('');
       setInsertOpen(false);
-      fetchData();
       toast('行程已新增', 'success');
-    } catch(e) {
+    } catch {
       toast('新增失敗', 'error');
     }
   };
@@ -418,7 +356,7 @@ export default function PlanPage() {
                          onInsert={openInsertModal}
                        />
                      ))}
-                     <AccommodationCell day={d} data={accommodations.find(a => a.day === d)} tripId={tripId as string} onUpdate={fetchData} />
+                     <AccommodationCell day={d} data={accommodations.find(a => a.day === d)} tripId={tripId as string} />
                      <div className="h-8 bg-gray-50/50 border-r border-gray-100 border-b"></div>
                    </div>
                  ))}

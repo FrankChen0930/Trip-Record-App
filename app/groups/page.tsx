@@ -1,19 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
-import type { Group, Member, GroupMember } from '@/lib/types';
+import type { Group } from '@/lib/types';
+import { useMembers } from '@/features/members/hooks/useMembers';
+import { useGroups, useGroupMembers } from '@/features/groups/hooks/useGroups';
+import { useSaveGroup, useDeleteGroup, useToggleGroupMember } from '@/features/groups/hooks/useGroupMutations';
 
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 伺服器資料改由 feature hooks 提供
+  const { data: groups = [], isLoading: groupsLoading } = useGroups();
+  const { data: members = [], isLoading: membersLoading } = useMembers();
+  const { data: groupMembers = [], isLoading: gmLoading } = useGroupMembers();
+  const loading = groupsLoading || membersLoading || gmLoading;
+  const saveGroup = useSaveGroup();
+  const deleteGroup = useDeleteGroup();
+  const toggleGroupMember = useToggleGroupMember();
+
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
@@ -29,43 +36,31 @@ export default function GroupsPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
-  const fetchData = async () => {
-    const { data: g } = await supabase.from('groups').select('*').order('created_at');
-    const { data: m } = await supabase.from('trip_members').select('*');
-    const { data: gm } = await supabase.from('group_members').select('*');
-    setGroups(g || []);
-    setMembers(m || []);
-    setGroupMembers(gm || []);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
   const handleSaveGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!groupName) { toast('請輸入群組名稱', 'warning'); return; }
 
     try {
-      if (editingGroup) {
-        await supabase.from('groups').update({ name: groupName, color: groupColor, icon: groupIcon }).eq('id', editingGroup.id);
-        toast('群組已更新', 'success');
-      } else {
-        await supabase.from('groups').insert([{ name: groupName, color: groupColor, icon: groupIcon }]);
-        toast('群組已建立', 'success');
-      }
+      await saveGroup.mutateAsync({
+        id: editingGroup?.id ?? null,
+        data: { name: groupName, color: groupColor, icon: groupIcon },
+      });
+      toast(editingGroup ? '群組已更新' : '群組已建立', 'success');
       closeModal();
-      fetchData();
-    } catch (error: any) {
-      toast('失敗：' + error.message, 'error');
+    } catch (error) {
+      toast('失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
   const handleDeleteGroup = async (id: string, name: string) => {
     const ok = await confirm({ message: `確定要刪除「${name}」群組嗎？`, confirmText: '刪除', danger: true });
     if (!ok) return;
-    await supabase.from('groups').delete().eq('id', id);
-    toast('群組已刪除', 'info');
-    fetchData();
+    try {
+      await deleteGroup.mutateAsync(id);
+      toast('群組已刪除', 'info');
+    } catch (error) {
+      toast('刪除失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
   };
 
   const closeModal = () => {
@@ -84,12 +79,11 @@ export default function GroupsPage() {
 
   const toggleMember = async (groupId: string, memberId: string) => {
     const existing = groupMembers.find(gm => gm.group_id === groupId && gm.member_id === memberId);
-    if (existing) {
-      await supabase.from('group_members').delete().eq('id', existing.id);
-    } else {
-      await supabase.from('group_members').insert([{ group_id: groupId, member_id: memberId }]);
+    try {
+      await toggleGroupMember.mutateAsync({ existingId: existing?.id ?? null, groupId, memberId });
+    } catch (error) {
+      toast('更新失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
-    fetchData();
   };
 
   const getGroupMembers = (groupId: string) => {

@@ -2,22 +2,32 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ExpenseSkeleton } from '@/components/Skeleton';
-import type { Trip, Member, Expense } from '@/lib/types';
+import type { Expense } from '@/lib/types';
 import { Menu, DollarSign, Trash2, Edit2, Copy, Receipt } from 'lucide-react';
+import { useTrip } from '@/features/trips/hooks/useTrip';
+import { useMembers } from '@/features/members/hooks/useMembers';
+import { useExpenses } from '@/features/expenses/hooks/useExpenses';
+import { useSaveExpense, useDeleteExpense, useSettleDebt } from '@/features/expenses/hooks/useExpenseMutations';
+import { computeBalances, getTransactions } from '@/features/expenses/settle';
 
 export default function TripExpensePage() {
-  const { id: tripId } = useParams();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [tripInfo, setTripInfo] = useState<Trip | null>(null);
-  const [loading, setLoading] = useState(true);
+  const params = useParams();
+  const tripId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  // 伺服器資料改由 feature hooks 提供（useExpenses 內含 Realtime 訂閱）
+  const { data: tripInfo } = useTrip(tripId);
+  const { data: members = [] } = useMembers();
+  const { data: expenses = [], isLoading: loading } = useExpenses(tripId);
+  const saveExpense = useSaveExpense(tripId);
+  const deleteExpense = useDeleteExpense(tripId);
+  const settleDebt = useSettleDebt(tripId);
+
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isFormOpen, setFormOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
@@ -34,43 +44,24 @@ export default function TripExpensePage() {
   const [splitDetails, setSplitDetails] = useState<Record<string, string>>({});
   const [selectedLedgerMember, setSelectedLedgerMember] = useState<string>('');
 
-  const fetchData = async () => {
-    const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
-    const { data: exp } = await supabase.from('trip_expenses').select('*').eq('trip_id', tripId).order('created_at', { ascending: false });
-    const { data: mem } = await supabase.from('trip_members').select('*');
-
-    setTripInfo(trip);
-    setExpenses(exp || []);
-    setMembers(mem || []);
-
-    if (mem && mem.length > 0) {
-      if (!payer) setPayer(mem[0].nickname);
-      if (selectedFriends.length === 0) setSelectedFriends(mem.map(m => m.nickname));
-      
-      const myId = localStorage.getItem('my_member_id');
-      if (myId) {
-        const me = mem.find(m => m.id === myId);
-        if (me) setSelectedLedgerMember(me.nickname);
-      }
-    }
-    setLoading(false);
-  };
-
+  // 成員載入後初始化表單預設（代墊人、分攤對象、個人帳本預設為自己）；用 functional update 避免覆蓋使用者已改的值
   useEffect(() => {
-    fetchData();
+    if (members.length === 0) return;
+    setPayer(prev => prev || members[0].nickname);
+    setSelectedFriends(prev => prev.length === 0 ? members.map(m => m.nickname) : prev);
+    const myId = typeof localStorage !== 'undefined' ? localStorage.getItem('my_member_id') : null;
+    if (myId) {
+      const me = members.find(m => m.id === myId);
+      if (me) setSelectedLedgerMember(prev => prev || me.nickname);
+    }
+  }, [members]);
+
+  // 捲動視差
+  useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
-
-    const channel = supabase
-      .channel(`exp-${tripId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_expenses' }, () => fetchData())
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [tripId]);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleEditClick = (exp: Expense) => {
     setEditingId(exp.id);
@@ -114,7 +105,7 @@ export default function TripExpensePage() {
 
     const numAmount = parseFloat(amount);
     
-    let finalSplitDetails: Record<string, number> = {};
+    const finalSplitDetails: Record<string, number> = {};
     if (splitType === 'custom') {
       let customSum = 0;
       for (const friend of selectedFriends) {
@@ -139,83 +130,39 @@ export default function TripExpensePage() {
     };
 
     try {
-      if (editingId) {
-        await supabase.from('trip_expenses').update(payload).eq('id', editingId);
-        toast('支出已更新', 'success');
-      } else {
-        await supabase.from('trip_expenses').insert([payload]);
-        toast('支出已記錄', 'success');
-      }
+      await saveExpense.mutateAsync({ id: editingId, payload });
+      toast(editingId ? '支出已更新' : '支出已記錄', 'success');
       setItem(''); setAmount(''); setFormOpen(false); setEditingId(null); setSplitDetails({});
-      fetchData();
-    } catch (error: any) {
-      toast('儲存失敗：' + error.message, 'error');
+    } catch (error) {
+      toast('儲存失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({ message: '確定要刪除這筆支出嗎？', confirmText: '刪除', danger: true });
     if (!ok) return;
-    await supabase.from('trip_expenses').delete().eq('id', id);
-    toast('支出已刪除', 'info');
-    fetchData();
+    try {
+      await deleteExpense.mutateAsync(id);
+      toast('支出已刪除', 'info');
+    } catch (error) {
+      toast('刪除失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
   };
 
   const handleSettleDebt = async (debtor: string, creditor: string, amount: number) => {
     const ok = await confirm({ message: `確定記錄 ${debtor} 償還 ${creditor} $${amount.toFixed(0)} 嗎？`, confirmText: '確清帳', danger: false });
     if (!ok) return;
-
     try {
-      await supabase.from('trip_expenses').insert([{
-        item_name: '✔️ 結清款項',
-        amount: amount,
-        payer: debtor,
-        participants: [creditor],
-        split_type: 'equal',
-        is_transfer: true,
-        trip_id: tripId
-      }]);
+      await settleDebt.mutateAsync({ debtor, creditor, amount });
       toast('清帳紀錄已新增', 'success');
-      fetchData();
-    } catch (e: any) {
-      toast('清帳失敗：' + e.message, 'error');
+    } catch (error) {
+      toast('清帳失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
-  // 計算 Balance
-  const balances: Record<string, number> = {};
-  members.forEach(m => balances[m.nickname] = 0);
-  expenses.forEach(exp => {
-    const amt = typeof exp.amount === 'number' ? exp.amount : parseFloat(String(exp.amount));
-    if (balances[exp.payer] !== undefined) balances[exp.payer] += amt;
-    
-    if (exp.split_type === 'custom' && exp.split_details) {
-      Object.entries(exp.split_details).forEach(([person, personAmt]) => {
-         if (balances[person] !== undefined) balances[person] -= (typeof personAmt === 'number' ? personAmt : parseFloat(String(personAmt)));
-      });
-    } else {
-      const perPerson = amt / exp.participants.length;
-      exp.participants.forEach((p: string) => {
-        if (balances[p] !== undefined) balances[p] -= perPerson;
-      });
-    }
-  });
-
-  const getTransactions = () => {
-    const debtors = Object.entries(balances).filter(([_, v]) => v < -1).map(([n, v]) => ({ n, v: Math.abs(v) }));
-    const creditors = Object.entries(balances).filter(([_, v]) => v > 1).map(([n, v]) => ({ n, v }));
-    const tx = [];
-    let i = 0, j = 0;
-    while (i < debtors.length && j < creditors.length) {
-      const amt = Math.min(debtors[i].v, creditors[j].v);
-      tx.push({ from: debtors[i].n, to: creditors[j].n, amt });
-      debtors[i].v -= amt; creditors[j].v -= amt;
-      if (debtors[i].v < 1) i++; if (creditors[j].v < 1) j++;
-    }
-    return tx;
-  };
-
-  const transactions = getTransactions();
+  // 餘額與最佳結清路徑（純函式，已抽到 features/expenses/settle.ts）
+  const balances = computeBalances(members, expenses);
+  const transactions = getTransactions(balances);
   const totalExpenses = expenses.reduce((acc, e) => acc + (e.is_transfer ? 0 : (typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)))), 0);
 
   // 支出分類 (簡單圓餅圖)

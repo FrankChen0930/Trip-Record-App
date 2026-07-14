@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "env.check.d.ts",
+    "app/**/*.ts", "app/**/*.tsx",
+    "components/**/*.ts", "components/**/*.tsx",
+    "features/**/*.ts", "features/**/*.tsx",
+    "lib/**/*.ts",
+    "stores/**/*.ts"
+  ],
+  "exclude": ["node_modules", "**/*.test.ts", ".next"]
+}

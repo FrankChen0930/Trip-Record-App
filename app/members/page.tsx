@@ -1,18 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { MemberSkeleton } from '@/components/Skeleton';
-import type { Member } from '@/lib/types';
+import { useMembers } from '@/features/members/hooks/useMembers';
+import { useAddMember, useDeleteMember } from '@/features/members/hooks/useMemberMutations';
 
 export default function MembersPage() {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 伺服器資料改由 feature hooks（TanStack Query）提供
+  const { data: members = [], isLoading: loading } = useMembers();
+  const addMember = useAddMember();
+  const deleteMember = useDeleteMember();
+
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
 
@@ -26,14 +29,8 @@ export default function MembersPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
-  const fetchMembers = async () => {
-    const { data } = await supabase.from('trip_members').select('*').order('created_at', { ascending: true });
-    setMembers(data || []);
-    setLoading(false);
-  };
-
+  // PIN + localStorage 登入維持原狀（屬本機 UI 狀態），P2 導入 Auth 時再統一改寫。
   useEffect(() => {
-    fetchMembers();
     setMyId(localStorage.getItem('my_member_id'));
   }, []);
 
@@ -53,13 +50,12 @@ export default function MembersPage() {
     e.preventDefault();
     if (!newRealName || !newNickname || !newPin) { toast('請填寫完整資訊', 'warning'); return; }
     try {
-      await supabase.from('trip_members').insert([{ real_name: newRealName, nickname: newNickname, pin: newPin }]);
+      await addMember.mutateAsync({ real_name: newRealName, nickname: newNickname, pin: newPin });
       setAddModalOpen(false);
       setNewRealName(''); setNewNickname(''); setNewPin('');
       toast('新成員已加入團隊！', 'success');
-      fetchMembers();
-    } catch (error: any) {
-      toast('新增失敗：' + error.message, 'error');
+    } catch (error) {
+      toast('新增失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
@@ -70,9 +66,12 @@ export default function MembersPage() {
       danger: true
     });
     if (!ok) return;
-    await supabase.from('trip_members').delete().eq('id', id);
-    toast(`${name} 已從名冊移除`, 'info');
-    fetchMembers();
+    try {
+      await deleteMember.mutateAsync(id);
+      toast(`${name} 已從名冊移除`, 'info');
+    } catch (error) {
+      toast('刪除失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
   };
 
   const currentUser = members.find(m => m.id === myId);

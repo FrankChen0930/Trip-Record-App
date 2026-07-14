@@ -2,33 +2,30 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import { useToast } from '@/components/Toast';
-import type { Trip, Journal } from '@/lib/types';
+import { useTrip } from '@/features/trips/hooks/useTrip';
+import { useJournals } from '@/features/journal/hooks/useJournals';
+import { useSaveJournal } from '@/features/journal/hooks/useSaveJournal';
 
 export default function JournalPage() {
-  const { id: tripId } = useParams();
-  const [tripInfo, setTripInfo] = useState<Trip | null>(null);
-  const [journals, setJournals] = useState<Journal[]>([]);
+  const params = useParams();
+  const tripId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  // 伺服器資料改由 feature hooks（TanStack Query）提供
+  const { data: tripInfo } = useTrip(tripId);
+  const { data: journals = [] } = useJournals(tripId);
+  const saveJournal = useSaveJournal(tripId);
+
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [activeDay, setActiveDay] = useState(1);
   const [showDayZero, setShowDayZero] = useState(false);
   const [content, setContent] = useState('');
-  const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { toast } = useToast();
-
-  const fetchData = async () => {
-    const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
-    setTripInfo(trip);
-    const { data: j } = await supabase.from('trip_journals').select('*').eq('trip_id', tripId);
-    setJournals(j || []);
-  };
-
-  useEffect(() => { fetchData(); }, [tripId]);
+  const saving = saveJournal.isPending;
 
   useEffect(() => {
     if (typeof localStorage !== 'undefined') {
@@ -63,26 +60,17 @@ export default function JournalPage() {
     setLastSaved(journal?.updated_at ? new Date(journal.updated_at).toLocaleTimeString() : null);
   }, [activeDay, journals]);
 
-  // 自動儲存 (debounce 1.5 秒)
-  const autoSave = useCallback(async (text: string) => {
+  // 自動儲存 (debounce 1.5 秒)。寫入與快取更新交給 useSaveJournal mutation。
+  const autoSave = useCallback((text: string) => {
     if (!tripId) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.from('trip_journals').upsert(
-        { trip_id: tripId, day: activeDay, content: text, updated_at: new Date().toISOString() },
-        { onConflict: 'trip_id,day' }
-      );
-      if (error) throw error;
-      setLastSaved(new Date().toLocaleTimeString());
-      // Refresh journals list
-      const { data: j } = await supabase.from('trip_journals').select('*').eq('trip_id', tripId);
-      setJournals(j || []);
-    } catch (error: any) {
-      toast('自動儲存失敗', 'error');
-    } finally {
-      setSaving(false);
-    }
-  }, [tripId, activeDay, toast]);
+    saveJournal.mutate(
+      { day: activeDay, content: text },
+      {
+        onSuccess: () => setLastSaved(new Date().toLocaleTimeString()),
+        onError: () => toast('自動儲存失敗', 'error'),
+      }
+    );
+  }, [tripId, activeDay, saveJournal, toast]);
 
   const handleContentChange = (text: string) => {
     setContent(text);

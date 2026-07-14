@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import { useToast } from '@/components/Toast';
-import type { Trip, Member, TripMemo } from '@/lib/types';
+import type { TripMemo } from '@/lib/types';
+import { useTrip } from '@/features/trips/hooks/useTrip';
+import { useMemoMembers } from '@/features/memo/hooks/useMemoMembers';
+import { useMemos } from '@/features/memo/hooks/useMemos';
+import { useAddMemo, useUpdateMemo, useDeleteMemo } from '@/features/memo/hooks/useMemoMutations';
 import { Menu, FileText, CheckSquare, Plus, Trash2, Edit2, Link as LinkIcon } from 'lucide-react';
 import React from 'react';
 
@@ -118,37 +121,27 @@ function TodoItem({ memo, onUpdate, onDelete }: { memo: TripMemo; onUpdate: (id:
 
 // --- Main Page ---
 export default function MemoPage() {
-  const { id: tripId } = useParams();
+  const params = useParams();
+  const tripId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { toast } = useToast();
 
-  const [tripInfo, setTripInfo] = useState<Trip | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [memos, setMemos] = useState<TripMemo[]>([]);
+  // 伺服器資料改由 feature hooks 提供
+  const { data: tripInfo } = useTrip(tripId);
+  const { data: members = [] } = useMemoMembers(tripId);
+  const { data: memos = [] } = useMemos(tripId);
+  const addMemo = useAddMemo(tripId);
+  const updateMemo = useUpdateMemo(tripId);
+  const deleteMemo = useDeleteMemo(tripId);
+
   const [activeTab, setActiveTab] = useState<string>('shared');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
-  const fetchData = async () => {
-    const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
-    setTripInfo(trip);
-
-    const { data: mem } = await supabase.from('trip_members').select('*').eq('trip_id', tripId);
-    setMembers(mem || []);
-
-    const { data: mms } = await supabase.from('trip_memos').select('*').eq('trip_id', tripId).order('sort_order', { ascending: true });
-    setMemos(mms || []);
-  };
-
-  useEffect(() => {
-    if (tripId) fetchData();
-  }, [tripId]);
 
   const activeMemos = memos.filter(m => activeTab === 'shared' ? m.member_id === null : m.member_id === activeTab);
   const textMemos = activeMemos.filter(m => m.type !== 'todo');
   const todoMemos = activeMemos.filter(m => m.type === 'todo');
 
-  const handleUpdateMemo = async (id: string, updates: Partial<TripMemo>) => {
-    setMemos(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-    await supabase.from('trip_memos').update(updates).eq('id', id);
+  const handleUpdateMemo = (id: string, updates: Partial<TripMemo>) => {
+    updateMemo.mutate({ id, updates });
   };
 
   const handleAddMemo = async (type: 'text' | 'todo') => {
@@ -162,19 +155,16 @@ export default function MemoPage() {
       type: type,
       sort_order: highestOrder + 100
     };
-
-    const { data } = await supabase.from('trip_memos').insert([newMemo]).select().single();
-    if (data) {
-      setMemos(prev => [...prev, data as TripMemo]);
-      if (type === 'text') {
-        toast('已建立新文字備忘錄', 'success');
-      }
+    try {
+      await addMemo.mutateAsync(newMemo);
+      if (type === 'text') toast('已建立新文字備忘錄', 'success');
+    } catch (error) {
+      toast('新增失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
-  const handleDeleteMemo = async (id: string) => {
-    setMemos(prev => prev.filter(m => m.id !== id));
-    await supabase.from('trip_memos').delete().eq('id', id);
+  const handleDeleteMemo = (id: string) => {
+    deleteMemo.mutate(id);
   };
 
   return (

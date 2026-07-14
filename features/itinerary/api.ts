@@ -1,0 +1,37 @@
+import { supabase } from '@/lib/supabase/client';
+
+export interface ItineraryPayload {
+  day: number;
+  start_time: string;
+  end_time: string | null;
+  location: string;
+  transport_type: string;
+  item_type: string;
+  note: string;
+  trip_id: string | undefined;
+  map_url: string;
+}
+
+export interface TicketStatusInput {
+  itinerary_id: string;
+  member_name: string;
+  ticket_link: string | null;
+  is_ready: boolean;
+}
+
+export const itineraryApi = {
+  list: (tripId: string) =>
+    supabase.from('trip_itinerary').select('*').eq('trip_id', tripId).order('day').order('start_time'),
+  listTicketStatuses: () =>
+    supabase.from('trip_member_ticket_status').select('*'),
+  listAccommodations: (tripId: string) =>
+    supabase.from('trip_accommodations').select('*').eq('trip_id', tripId),
+  create: (payload: ItineraryPayload) =>
+    supabase.from('trip_itinerary').insert([payload]),
+  update: (id: string, payload: ItineraryPayload) =>
+    supabase.from('trip_itinerary').update(payload).eq('id', id),
+  remove: (id: string) =>
+    supabase.from('trip_itinerary').delete().eq('id', id),
+  upsertTicketStatus: (status: TicketStatusInput) =>
+    supabase.from('trip_member_ticket_status').upsert(status, { onConflict: 'itinerary_id,member_name' }),
+};

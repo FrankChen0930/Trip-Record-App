@@ -39,6 +39,8 @@ export interface Member {
   real_name: string;
   nickname: string;
   pin: string;
+  email?: string | null;     // P2: 用於 Magic Link 登入對應
+  user_id?: string | null;   // P2: 綁定的 Supabase Auth 使用者
   created_at: string;
 }
 

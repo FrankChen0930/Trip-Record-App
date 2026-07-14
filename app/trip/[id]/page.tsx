@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
@@ -10,16 +9,27 @@ import SpreadsheetImport from '@/components/SpreadsheetImport';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ItinerarySkeleton } from '@/components/Skeleton';
-import type { Trip, ItineraryItem, Member, TripAccommodation } from '@/lib/types';
+import type { ItineraryItem } from '@/lib/types';
 import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket, Bed } from 'lucide-react';
+import { useTrip } from '@/features/trips/hooks/useTrip';
+import { useMembers } from '@/features/members/hooks/useMembers';
+import { useItinerary } from '@/features/itinerary/hooks/useItinerary';
+import { useSaveItinerary, useDeleteItinerary, useUpdateMemberTicket } from '@/features/itinerary/hooks/useItineraryMutations';
 
 export default function TripMasterPage() {
-  const { id: tripId } = useParams();
-  const [data, setData] = useState<ItineraryItem[]>([]);
-  const [accommodations, setAccommodations] = useState<TripAccommodation[]>([]);
-  const [tripInfo, setTripInfo] = useState<Trip | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const params = useParams();
+  const tripId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  // 伺服器資料改由 feature hooks 提供（useItinerary 內含 Realtime 訂閱）
+  const { data: tripInfo } = useTrip(tripId);
+  const { data: members = [] } = useMembers();
+  const { data: itineraryBundle, isLoading: loading, refetch: refetchItinerary } = useItinerary(tripId);
+  const data = useMemo(() => itineraryBundle?.items ?? [], [itineraryBundle]);
+  const accommodations = itineraryBundle?.accommodations ?? [];
+  const saveItinerary = useSaveItinerary(tripId);
+  const deleteItinerary = useDeleteItinerary(tripId);
+  const updateTicket = useUpdateMemberTicket(tripId);
+
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -46,50 +56,12 @@ export default function TripMasterPage() {
     return location.split(/[\/\+、，,]/).map(s => s.trim()).filter(Boolean);
   }, [location]);
 
-  const fetchData = async () => {
-    if (!tripId) return;
-
-    const { data: trip } = await supabase.from('trips').select('*').eq('id', tripId).single();
-    setTripInfo(trip);
-
-    const { data: memberData } = await supabase.from('trip_members').select('*');
-    setMembers(memberData || []);
-
-    const { data: itinerary } = await supabase
-      .from('trip_itinerary')
-      .select('*')
-      .eq('trip_id', tripId)
-      .order('day').order('start_time');
-
-    const { data: statuses } = await supabase.from('trip_member_ticket_status').select('*');
-    const { data: accs } = await supabase.from('trip_accommodations').select('*').eq('trip_id', tripId);
-
-    const enrichedData = itinerary?.map(item => ({
-      ...item,
-      member_statuses: statuses?.filter(s => s.itinerary_id === item.id) || []
-    }));
-
-    setData(enrichedData || []);
-    setAccommodations(accs || []);
-    setLoading(false);
-  };
-
+  // 捲動視差
   useEffect(() => {
-    fetchData();
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
-
-    const channel = supabase
-      .channel(`trip-realtime-${tripId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_itinerary' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_member_ticket_status' }, () => fetchData())
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [tripId]);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (typeof localStorage !== 'undefined') {
@@ -103,11 +75,8 @@ export default function TripMasterPage() {
 
   const memberNicknames = useMemo(() => members.map(m => m.nickname), [members]);
 
-  const updateMemberTicket = async (itinerary_id: string, member_name: string, ticket_link: string | null, is_ready: boolean) => {
-    const { error } = await supabase
-      .from('trip_member_ticket_status')
-      .upsert({ itinerary_id, member_name, ticket_link, is_ready }, { onConflict: 'itinerary_id,member_name' });
-    if (!error) fetchData();
+  const updateMemberTicket = (itinerary_id: string, member_name: string, ticket_link: string | null, is_ready: boolean) => {
+    updateTicket.mutate({ itinerary_id, member_name, ticket_link, is_ready });
   };
 
   const currentItems = useMemo(() => data.filter(i => i.day === activeDay), [data, activeDay]);
@@ -150,19 +119,12 @@ export default function TripMasterPage() {
     };
 
     try {
-      if (editingId) {
-        await supabase.from('trip_itinerary').update(payload).eq('id', editingId);
-        toast('行程已更新', 'success');
-      } else {
-        await supabase.from('trip_itinerary').insert([payload]);
-        toast('行程已新增', 'success');
-      }
-
+      await saveItinerary.mutateAsync({ id: editingId, payload });
+      toast(editingId ? '行程已更新' : '行程已新增', 'success');
       setFormOpen(false);
       resetForm();
-      fetchData();
-    } catch (error: any) {
-      toast('儲存失敗：' + error.message, 'error');
+    } catch (error) {
+      toast('儲存失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
@@ -202,9 +164,12 @@ export default function TripMasterPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirm({ message: '確定要刪除這筆行程嗎？', confirmText: '刪除', danger: true });
     if (!ok) return;
-    await supabase.from('trip_itinerary').delete().eq('id', id);
-    toast('行程已刪除', 'info');
-    fetchData();
+    try {
+      await deleteItinerary.mutateAsync(id);
+      toast('行程已刪除', 'info');
+    } catch (error) {
+      toast('刪除失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
   };
 
   const getTransportColor = (type: string) => {
@@ -497,7 +462,7 @@ export default function TripMasterPage() {
 
       {/* 試算表匯入 Modal */}
       <Modal isOpen={isImportOpen} onClose={() => setImportOpen(false)} title="匯入行程資料">
-        <SpreadsheetImport tripId={tripId as string} tripInfo={tripInfo} onImportComplete={fetchData} onClose={() => setImportOpen(false)} />
+        <SpreadsheetImport tripId={tripId as string} tripInfo={tripInfo ?? null} onImportComplete={() => { refetchItinerary(); }} onClose={() => setImportOpen(false)} />
       </Modal>
 
       <BottomTabs />

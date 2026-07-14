@@ -1,12 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-// 如果抓不到，就在控制台大聲呼救
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("❌ 警告：環境變數抓不到！請檢查 .env.local 檔案");
-  console.log("當前 URL:", supabaseUrl);
-}
-
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// 相容層：既有頁面以 `import { supabase } from '@/lib/supabase'` 匯入。
+// 實作已移到 lib/supabase/client.ts，這裡轉出以避免一次大量改 import。
+// 新程式碼請直接 import from '@/lib/supabase/client'（前端）或 '@/lib/supabase/server'（伺服器端）。
+export { supabase } from './supabase/client';

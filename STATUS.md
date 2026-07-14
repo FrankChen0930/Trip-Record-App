@@ -1,0 +1,118 @@
+# STATUS — Travel Record App 重構進度與交接
+
+> 最後更新：2026-07-15
+> 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
+> 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
+
+---
+
+## 專案一句話
+
+環島旅行記錄 Web App（`my-trip-app`）。正在做「前端 + 架構重構 + 功能擴充」。
+技術棧：Next.js 16 (App Router, 全 client component) · React 19 · TypeScript · Tailwind 4 ·
+Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · dnd-kit · leaflet(已安裝待用) · xlsx。
+
+---
+
+## 進度總覽
+
+| 階段 | 內容 | 狀態 |
+| :-- | :-- | :-- |
+| P0 | 地基：design tokens、TanStack Query、Zustand、Supabase client 分層、UI primitives、feature 骨架 | ✅ 完成 |
+| P1 | 資料層遷移：journal / members / expenses / groups / 首頁 / trip 主頁 / plan 全改用 feature hooks；結清演算法抽純函式 + 單元測試 | ✅ 完成（photos 頁刻意留給 P3） |
+| P2a | Auth 程式：/login(Magic Link)、useSession、綁定橋接（user_id→email→PIN 認領）、SQL、runbook | ✅ 程式完成（含自助 PIN 認領），**尚未啟用** |
+| P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ 待全員登入綁定後做 |
+| P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | ⬜ 未開始 |
+| P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面（目前只有 /login 用了新樣式） | ⬜ 未開始 |
+| P5a | 內建地圖（Leaflet） | ⬜ 未開始 |
+| P5b | 建議景點 + 交通時間（Google Places，需 API 金鑰） | ⬜ 未開始 |
+| P5c | AI 行程建議 | ⬜ 未開始（最後、可選） |
+
+---
+
+## 架構慣例（之後每頁都照這個，勿回退）
+
+**目錄**：`app/` 只放路由與組裝（薄）；邏輯放 `features/<name>/`：
+```
+features/<name>/
+  api.ts        # 集中此功能的 Supabase 查詢/寫入（頁面不再直接 supabase.from）
+  hooks/        # 用 TanStack Query 包成 useXxx（查詢）與 mutation
+  components/   # 此功能專屬 UI（目前多為空，P4 會用到）
+```
+
+**資料流規範**：
+- 伺服器資料一律走 `api.ts` + TanStack Query hook，**頁面裡不要再出現 `supabase.from(...)`**。
+- 共用查詢已存在並跨頁複用：`useTrip`、`useMembers`、`useGroups`/`useGroupMembers`（靠 queryKey 共享快取）。
+- Realtime 訂閱收在對應 hook 內（見 `features/expenses/useExpenses.ts`、`features/itinerary/useItinerary.ts`）。
+- 寫入用 mutation，成功後 `invalidateQueries` 讓相關 key 重抓；需要即時手感的用 `setQueryData` 樂觀更新（見 `features/memo`、`features/plan`）。
+- 跨頁小狀態用 Zustand（`stores/ui.ts`、`stores/session.ts`）。
+- 設計系統 primitives 從 `@/components/ui` 取（Button/Card/Badge/Input）；顏色用 CSS 變數（見下）。
+
+**設計 tokens（湖水青旅，明亮冷色）**在 `app/globals.css`：
+`--color-primary #1D9E75`、`--color-primary-strong #0F6E56`、`--color-primary-soft #CDEEE2`、
+`--color-bg-page #F2FAF7`、`--color-surface #FFFFFF`、`--color-ink #1F2A27`、`--color-ink-muted #6B7C77`、
+圓角 `--radius-card 12px` / `--radius-control 9px` / `--radius-pill 999px`。舊 tokens 仍在，P4 逐頁換掉。
+
+**遷移一頁的範式**（P1 已做 7 頁，可照抄）：
+1. 在 `features/X/api.ts` 寫查詢/寫入；`hooks/` 寫 `useX`(query) 與 mutation。
+2. 頁面移除 `fetchData()` 與所有 `supabase.from`，改呼叫 hooks；`loading` 取自 query 的 `isLoading`。
+3. mutation 的 `catch` 用型別安全寫法：`error instanceof Error ? error.message : '未知錯誤'`（勿用 `catch (e: any)`）。
+4. 跑 `npm run typecheck` 與（若動到帳務）`npm test` 驗證。
+
+---
+
+## 驗證指令
+
+- `npm run typecheck` — 型別檢查（用 `tsconfig.check.json`，見下方環境註記）。
+- `npm test` — settle 結清演算法單元測試（`features/expenses/settle.test.ts`，目前 4/4 綠）。
+- `npm run lint` — ESLint。
+- `npm run build` / `npm run dev` — Next 建置 / 開發。
+
+> **環境註記（重要）**：這些檔案先前是在一個「檔案掛載會間歇截斷寫入」的沙盒環境編輯的，
+> 因此 Next 產生的 `.next/dev/types/routes.d.ts` 偶爾會被截斷，讓一般 `tsc` 誤報。
+> 為此加了 `tsconfig.check.json` + `env.check.d.ts`，`npm run typecheck` 會跳過 `.next` 只檢查原始碼。
+> **在 Claude Code（本機終端機）沒有這個掛載問題**，可以放心直接用 `tsc --noEmit`、`next build`；
+> `tsconfig.check.json` / `env.check.d.ts` 留著無妨，不想要可刪。
+
+---
+
+## 目前卡在哪 / 各階段下一步
+
+### P2（Auth + RLS）— 程式已完成，等啟用與全員綁定
+- 已完成：`features/auth/`(api、useSession、AuthBridge、components/ClaimMember)、`app/login/page.tsx`；
+  `trip_members` 已加 `email`、`user_id` 欄位（**使用者已在 Supabase 執行 `p2a_add_member_auth_columns.sql`**，欄位就位，RLS 未開）。
+- **自助 PIN 認領已實作**（2026-07-15）。`AuthBridge` 對應順序：
+  1. `user_id` 找成員（已綁定者換 email 也認得）→ 2. email 對得到且未綁定 → 自動綁定 →
+  3. 都對不到 → 顯示 `ClaimMember` 全螢幕認領畫面（選未綁定成員 + 輸入 4 位 PIN，
+     PIN 與「未被認領」都放在 update 的 where 條件一次驗證）。成功後寫 `localStorage.my_member_id`。
+  P2a 期間認領畫面保留「稍後再說」可關閉（RLS 未開，不綁也能用）；P2b 時移除。
+- 註：PIN 為明碼且名冊對登入者可讀，認領防「選錯人/誤綁」而非惡意攻擊（朋友團自用可接受）。
+- 之後才做 P2b：先確認大家都綁定 → 跑 `supabase/migrations/p2b_enable_rls.sql`（`trip_members` policy 為
+  登入者全可讀寫，認領流程開 RLS 後仍可運作，已確認）→ 加「未登入導向 /login」閘門、移除 localStorage 橋接。
+- 啟用前提：Supabase 後台需開 Email 登入 provider 並設定 Redirect URLs（見 runbook 階段 A 第 1 步）。
+
+### P3（R2 照片）— photos 頁還沒遷移就是留給這裡
+- `app/trip/[id]/photos/page.tsx` 仍直接用 `supabase.from` / `supabase.storage`（唯一還沒進 feature 層的頁面，故意的）。
+- 現況：照片存個人 Google Drive，約 1.76GB；改 R2 可做縮圖/瀑布流並釋出空間。無自訂網域 → 先用 R2 內建 `*.r2.dev`。
+- 做法：Next.js Route Handler(`app/api/photos/upload-url/route.ts`) 產生 R2 presigned PUT URL → 前端壓成 WebP 直傳 → 寫 `trip_photos`；
+  讀取走 R2 公開網址。`trip_photos` 改欄位：`storage_provider`(`r2|gdrive|supabase`) / `r2_key` / `thumb_key` / `external_url`。
+  遷移：一次性腳本從 Google Drive 下載 → 上傳 R2 → 更新 DB（1.76GB 在 R2 免費 10GB 內）。
+- 需新增依賴：`@aws-sdk/client-s3`、`@aws-sdk/s3-request-presigner`；環境變數見架構文件第 7.5 節。
+
+### P4（視覺重構）
+- 把湖水青旅 tokens + `@/components/ui` primitives 套到全部頁面，統一 App Shell / 空狀態 / 載入 / 錯誤邊界；
+  保留特色元件（trip 主頁 3D 日期選擇器、支出進度條）。行動優先、明亮為主（深色模式可後補）。
+- 順手清掉 P1 遺留的 pre-existing lint 警告（`set-state-in-effect` 的 localStorage 讀取等，多會在改版時自然消失）。
+
+### P5a 地圖 / P5b 建議景點 / P5c AI
+- 地圖用已安裝的 Leaflet + 明亮 tile；POI 資料打 Google Places（伺服器端 Route Handler 代理隱藏金鑰）；
+  `trip_itinerary` 加 `lat`/`lng`。使用者將自行申請 Google Places 金鑰。AI 行程排最後、可選。
+
+---
+
+## 坑 / 注意事項
+- **photos 頁**還用直接 supabase（P3 才重寫，勿誤以為漏了）。
+- **pre-existing lint 警告**（set-state-in-effect、封面 `<img>`、少數未用的 lucide import）是原本就有的，不是重構造成的回歸。
+- 新程式碼（`features/`）目前 lint 全乾淨；請維持。
+- `xlsx` 有已知安全告警但無可直接升級的修補版，**勿跑 `npm audit fix --force`**（會弄壞試算表匯入）；未來可換維護中的替代套件。
+- 檔尾行結束符：專案曾出現 CRLF/LF 混雜，建議加 `.gitattributes` 統一。
