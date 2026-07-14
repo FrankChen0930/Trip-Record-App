@@ -18,7 +18,7 @@ interface ClaimMemberProps {
 // 使用者選擇自己是哪位成員並輸入該成員的 4 位 PIN，
 // 驗證通過即把該成員綁定到目前登入帳號（user_id + email）。
 export function ClaimMember({ email, userId, onClose }: ClaimMemberProps) {
-  const { data: members = [], isLoading } = useMembers();
+  const { data: members = [], isLoading, isError, refetch } = useMembers();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -68,6 +68,13 @@ export function ClaimMember({ email, userId, onClose }: ClaimMemberProps) {
 
         {isLoading ? (
           <p style={{ color: 'var(--color-ink-muted)' }} className="text-sm text-center py-6">載入成員中…</p>
+        ) : isError ? (
+          <div className="text-center py-4">
+            <p style={{ color: 'var(--color-ink)' }} className="text-sm font-bold mb-2">成員名單載入失敗</p>
+            <p style={{ color: 'var(--color-ink-muted)' }} className="text-xs mb-4">請檢查網路連線後重試。</p>
+            <Button variant="secondary" style={{ width: '100%' }} onClick={() => refetch()}>重試</Button>
+            <Button variant="ghost" style={{ width: '100%', marginTop: 8 }} onClick={onClose}>稍後再說</Button>
+          </div>
         ) : unbound.length === 0 ? (
           <div className="text-center py-4">
             <p style={{ color: 'var(--color-ink)' }} className="text-sm font-bold mb-2">所有成員都已被認領</p>
