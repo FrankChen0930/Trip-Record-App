@@ -1,6 +1,6 @@
 # STATUS — Travel Record App 重構進度與交接
 
-> 最後更新：2026-07-15
+> 最後更新：2026-07-15（深夜；P2 認領流程驗證中，明日待辦見 P2 段落）
 > 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
 > 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
 
@@ -78,7 +78,26 @@ features/<name>/
 
 ## 目前卡在哪 / 各階段下一步
 
-### P2（Auth + RLS）— 程式已完成，等啟用與全員綁定
+### P2（Auth + RLS）— 程式已完成，認領流程驗證到一半（2026-07-15 深夜暫停）
+
+**明日待辦（接手先看這裡）**：
+1. **完成認領流程 end-to-end 驗證**：上次卡在 Supabase 內建 SMTP 的「email rate limit exceeded」
+   （免費內建信箱每小時只能寄 2~4 封，測試時很容易撞到；等額度重置即可，或見下方 SMTP 註記）。
+   驗證步驟：/login 寄信登入 → 認領畫面列出 4 位成員（豆腐/芙芙/LuBu/銅魔像）→ 錯誤 PIN 被拒 →
+   正確 PIN 綁定成功 → 重新整理不再出現認領畫面 → Supabase 查 `trip_members` 確認 `user_id`/`email` 已寫入。
+2. **首頁加登入入口**：使用者要求在主頁面放一個 login 按鈕/入口（目前只能手打網址 /login，體驗差）。
+   建議：Sidebar 或首頁頂部放「登入/已登入身分」入口，未登入顯示「登入」、已登入顯示暱稱或登出。
+
+**已驗證正常（今日排查結論，勿重查）**：
+- Vercel Git 整合曾斷線（4/7 後的 push 都沒觸發部署），使用者已重新連結，現在 push 會自動部署。
+- 部署 bundle 的 Supabase URL/anon key 與本機一致且有效；資料都在；RLS 未開；CORS 正常。
+- 「旅程/成員消失」是使用者瀏覽器殘留的舊 session/localStorage 造成（Clear site data 後恢復），非程式問題。
+- Supabase 後台：Email provider 已啟用、Site URL 與 Redirect URLs 已設好（trip-record-app.vercel.app）。
+
+**SMTP 註記**：正式讓大家綁定前，若 rate limit 很煩，可在 Supabase → Project Settings → Auth 接自訂 SMTP
+（如 Resend 免費額度），限額就能自己調；4 人自用平時夠用，只是測試期密集寄信會撞牆。
+
+#### 原始規劃備忘
 - 已完成：`features/auth/`(api、useSession、AuthBridge、components/ClaimMember)、`app/login/page.tsx`；
   `trip_members` 已加 `email`、`user_id` 欄位（**使用者已在 Supabase 執行 `p2a_add_member_auth_columns.sql`**，欄位就位，RLS 未開）。
 - **自助 PIN 認領已實作**（2026-07-15）。`AuthBridge` 對應順序：
