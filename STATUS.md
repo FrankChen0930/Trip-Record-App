@@ -21,12 +21,13 @@ Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · 
 | P0 | 地基：design tokens、TanStack Query、Zustand、Supabase client 分層、UI primitives、feature 骨架 | ✅ 完成 |
 | P1 | 資料層遷移：journal / members / expenses / groups / 首頁 / trip 主頁 / plan 全改用 feature hooks；結清演算法抽純函式 + 單元測試 | ✅ 完成（photos 頁刻意留給 P3） |
 | P2a | Auth 程式：/login(Magic Link)、useSession、綁定橋接（user_id→email→PIN 認領）、SQL、runbook | ✅ 程式完成（含自助 PIN 認領），**尚未啟用** |
-| P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ 待全員登入綁定後做 |
+| P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ **擱置中**：使用者這幾天陸續讓成員登入綁定，到齊後再做（SQL 已備好） |
 | P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | ⬜ 未開始 |
 | P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面（目前只有 /login 用了新樣式） | ⬜ 未開始 |
 | P5a | 內建地圖（Leaflet） | ⬜ 未開始 |
 | P5b | 建議景點 + 交通時間（Google Places，需 API 金鑰） | ⬜ 未開始 |
 | P5c | AI 行程建議 | ⬜ 未開始（最後、可選） |
+| P6 | 成員管理與權限：email 邀請成員、身分組分級控制權限（2026-07-15 使用者新需求） | ⬜ 未開始，**依賴 P2b**（權限強制力靠 RLS） |
 
 ---
 
@@ -97,7 +98,11 @@ features/<name>/
    → 錯誤 PIN 被拒 → 正確 PIN 綁定成功 → 重新整理不再出現認領畫面 →
    Supabase 查 `trip_members` 確認 `user_id`/`email` 已寫入。
    （注意 email rate limit：內建 SMTP 每小時只能寄 2~4 封；已有 session 就不用重寄。）
-3. 其餘 3 位成員各自登入認領 → 之後即可進 P2b。
+3. 其餘 3 位成員陸續登入綁定（**2026-07-15 決定：不趕，這幾天慢慢加，P2b 擱置到到齊為止**）。
+   兩種上車方式（現有功能即可，不需新程式）：
+   - A：成員自己 /login 寄信登入 → 認領畫面選自己 + 輸入 PIN。
+   - B：管理者先在 Supabase Table Editor 幫該成員填 `email` → 對方登入即自動綁定（跳過認領畫面）。
+4. 全員綁定後 → 執行 P2b（跑 `p2b_enable_rls.sql` + 加未登入導向閘門 + 移除 localStorage 橋接）。
 
 **2026-07-15 已完成的程式修正**：
 - `ClaimMember`：空名單（異常，多為權限問題）與「全被認領」分開顯示，前者提供重試。
@@ -144,6 +149,30 @@ features/<name>/
 ### P5a 地圖 / P5b 建議景點 / P5c AI
 - 地圖用已安裝的 Leaflet + 明亮 tile；POI 資料打 Google Places（伺服器端 Route Handler 代理隱藏金鑰）；
   `trip_itinerary` 加 `lat`/`lng`。使用者將自行申請 Google Places 金鑰。AI 行程排最後、可選。
+
+### P6（成員管理與權限）— 2026-07-15 使用者新需求，排在介面（P4）完成後
+> 使用者原話：介面完成之後，前端要能直接操作成員設定，例如「發郵件邀請誰」、
+> 「不同身分組有不同的控制權限」。
+
+**⚠️ 依賴**：權限的強制力來自 RLS policy 檢查角色，**必須在 P2b 之後**做；
+P2b 前只能做 UI 層的顯示/隱藏（拿 anon key 即可繞過，僅裝飾）。
+
+**6.1 Email 邀請成員**
+- 需要 `SUPABASE_SERVICE_ROLE_KEY`（只放 Vercel 環境變數 + 本機 `.env.local`，**絕不進前端 bundle**）。
+- `app/api/invite/route.ts`（Route Handler，伺服器端）：
+  驗證呼叫者已登入且為 admin → `supabase.auth.admin.inviteUserByEmail(email)` +
+  建立/更新 `trip_members`（暱稱 + email）→ 對方點邀請信 → 既有 AuthBridge email 自動綁定直接生效。
+- UI：成員名冊頁加「邀請成員」（輸入暱稱 + email），成員列表顯示狀態：未邀請 / 已邀請 / 已綁定。
+- 建議此時一併接 Resend 自訂 SMTP（順便解掉內建信箱 rate limit）。
+
+**6.2 身分組權限**
+- MVP 先做兩級全站角色：`trip_members.role`（`admin` | `member`）——
+  admin 才能：邀請/刪除成員、刪除旅程、管理身分組；member 一般使用。
+- 身分組（groups）已控制「看得到哪些旅程」；若需更細，再加 `group_members.role`
+  （`editor` | `viewer`）決定該群組旅程能否編輯（等真的需要再做，勿過度設計）。
+- 實作兩層：RLS policy 引用 role（升級 p2b 的 policy）＋ 前端依 role 顯示/隱藏操作按鈕。
+- 待決事項（做的時候再問使用者）：誰是 admin（預設發起人豆腐？）、
+  member 能否自行新增旅程/成員。
 
 ---
 
