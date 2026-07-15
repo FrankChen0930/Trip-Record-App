@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
 interface LightboxProps {
-  images: { url: string; caption?: string }[];
+  images: { url: string; caption?: string; isVideo?: boolean }[];
   currentIndex: number;
   isOpen: boolean;
   onClose: () => void;
@@ -58,11 +58,22 @@ export default function Lightbox({ images, currentIndex, isOpen, onClose }: Ligh
       </button>
 
       <div className="lightbox-image-wrapper" onClick={(e) => e.stopPropagation()}>
-        <img
-          src={images[index]?.url}
-          alt={images[index]?.caption || 'Photo'}
-          className="lightbox-image"
-        />
+        {images[index]?.isVideo ? (
+          <video
+            key={images[index]?.url}
+            src={images[index]?.url}
+            controls
+            autoPlay
+            playsInline
+            className="lightbox-image"
+          />
+        ) : (
+          <img
+            src={images[index]?.url}
+            alt={images[index]?.caption || 'Photo'}
+            className="lightbox-image"
+          />
+        )}
         <div className="lightbox-caption">
           <span>{index + 1} / {images.length}</span>
           {images[index]?.caption && <span className="ml-4 opacity-70">{images[index].caption}</span>}
