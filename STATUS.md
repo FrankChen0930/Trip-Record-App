@@ -22,7 +22,7 @@ Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · 
 | P1 | 資料層遷移：journal / members / expenses / groups / 首頁 / trip 主頁 / plan 全改用 feature hooks；結清演算法抽純函式 + 單元測試 | ✅ 完成（photos 頁刻意留給 P3） |
 | P2a | Auth 程式：/login(Magic Link)、useSession、綁定橋接（user_id→email→PIN 認領）、SQL、runbook | ✅ 程式完成（含自助 PIN 認領），**尚未啟用** |
 | P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ **擱置中**：使用者這幾天陸續讓成員登入綁定，到齊後再做（SQL 已備好） |
-| P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | 🔶 進行中（2026-07-16；程式與遷移上傳完成，差使用者三個小步驟，見 P3 段落） |
+| P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | ✅ 完成（2026-07-16；543 檔上線，Drive 原檔留作備份待使用者確認後自行處理） |
 | P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面 | ✅ 完成（2026-07-15；photos 頁除外，留給 P3 重寫時套） |
 | P5a | 內建地圖（Leaflet） | ⬜ 未開始 |
 | P5b | 建議景點 + 交通時間（Google Places，需 API 金鑰） | ⬜ 未開始 |
@@ -133,7 +133,7 @@ features/<name>/
   登入者全可讀寫，認領流程開 RLS 後仍可運作，已確認）→ 加「未登入導向 /login」閘門、移除 localStorage 橋接。
 - 啟用前提：Supabase 後台需開 Email 登入 provider 並設定 Redirect URLs（見 runbook 階段 A 第 1 步）。
 
-### P3（R2 照片）— 🔶 進行中（2026-07-16），程式完成、遷移上傳完成，等使用者三步
+### P3（R2 照片）— ✅ 完成（2026-07-16）
 
 **已完成（2026-07-16）**：
 - 使用者已建好 R2：bucket `trip-photos`、API token；憑證在 `.env.local`（`R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET`/`NEXT_PUBLIC_R2_PUBLIC_URL`）。
@@ -150,15 +150,15 @@ features/<name>/
   DB 寫入（db_insert.py）等公開網址才能跑：`created_at`＝EXIF 拍攝時間（頁面按 created_at 排序＝拍攝順序），
   並會刪掉舊的「Drive 資料夾連結」row（ca640873…）。
 
-**待使用者（卡這裡）**：
-1. R2 bucket → Settings → 啟用 **Public Development URL**，把 `https://pub-xxxx.r2.dev` 給 Claude
-   （`.env.local` 的 `NEXT_PUBLIC_R2_PUBLIC_URL` 目前誤填成 S3 endpoint，要換成這個）。
-2. 同頁 **CORS policy** 貼上（API token 權限不足以程式設定）：允許
-   `http://localhost:3000` 與 `https://trip-record-app.vercel.app` 的 `GET/PUT/HEAD`。
-3. Vercel → Settings → Environment Variables 加五個 R2 變數（值同 `.env.local`）→ 重新部署。
-
-**之後（Claude 接手）**：跑 db_insert.py 寫入 543 rows → 驗證頁面 → commit/push。
-Google Drive 原檔先留著當備份，確認網頁都看得到再由使用者自行決定刪不刪。
+**收尾驗證（2026-07-16，全綠）**：
+- 使用者已完成：Public Development URL（`https://pub-84a828852afa4fe6ac6fc6de5e5ce4ec.r2.dev`，
+  已更新 `.env.local` 的 `NEXT_PUBLIC_R2_PUBLIC_URL`）、bucket CORS、Vercel 五個 R2 env vars。
+- 公開網址 HEAD 測試 200 image/webp；CORS preflight（PUT from trip-record-app.vercel.app）204 通過。
+- db_insert.py 已跑：543 rows 寫入 `trip_photos`，每日張數 Day0–7 = 31/17/89/93/154/96/61/2
+  與 Drive 資料夾一致；舊「Drive 資料夾連結」row 已刪。
+- **Google Drive 原檔尚未刪除**：留作備份，使用者在網頁確認後自行決定；
+  本機備份在 session scratchpad `drive/`（暫存目錄，會被系統清掉，別當長期備份）。
+- R2 用量：約 817 MB / 免費 10 GB。
 
 ### P4（視覺重構）— ✅ 完成（2026-07-15）
 - 已把湖水青旅 tokens 套到全部頁面：globals.css 主題層（Toast/Modal/Confirm/BottomTabs/badges/hero 漸層）、
