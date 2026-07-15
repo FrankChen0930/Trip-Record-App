@@ -29,6 +29,12 @@
 2. **新增欄位**
    SQL Editor 執行 `supabase/migrations/p2a_add_member_auth_columns.sql`（加 `email`、`user_id`，安全）。
 
+2.5 **關閉遺留 RLS（重要，2026-07-15 發現）**
+   建站初期曾開 RLS 且 policy 只授權 `anon`，導致**登入後**所有查詢回空資料
+   （症狀：認領畫面顯示「所有成員都已被認領」、登入後旅程/成員消失）。
+   SQL Editor 執行 `supabase/migrations/p2a_disable_legacy_rls.sql` 全部關閉；
+   P2b 會重新以正確規則開啟。
+
 3. **（可選）幫成員預填 email**
    已改採「自助 PIN 認領」，**不需要**事先收集/填寫 email。
    若想讓某些人跳過認領畫面，仍可在 Table Editor 的 `trip_members` 預填 email（登入時會自動綁定）。
@@ -57,6 +63,8 @@
 
 2. **開啟 RLS**
    SQL Editor 執行 `supabase/migrations/p2b_enable_rls.sql`。
+   （腳本開頭會先 drop 掉 public schema 所有舊 policy——包含建站初期的 anon policy，
+   避免撞名、也避免未登入者透過殘留 policy 繞過保護。）
 
 3. **加上登入閘門（建議，搭配本階段）**
    開 RLS 後，未登入會讀不到任何資料。建議讓 App 在未登入時導向 `/login`

@@ -7,6 +7,19 @@
 -- 執行位置：Supabase Dashboard → SQL Editor
 -- ============================================================
 
+-- 先清掉所有舊 policy（建站初期遺留的 anon policy 若不清除，
+-- 開 RLS 後未登入者仍可透過它們存取資料，且新 policy 可能撞名）
+do $$
+declare r record;
+begin
+  for r in
+    select schemaname, tablename, policyname from pg_policies
+    where schemaname = 'public'
+  loop
+    execute format('drop policy %I on %I.%I', r.policyname, r.schemaname, r.tablename);
+  end loop;
+end $$;
+
 -- 判斷目前登入者是否可存取某趟旅程（security definer：略過內部表的 RLS，避免遞迴）
 create or replace function public.can_access_trip(t uuid)
 returns boolean

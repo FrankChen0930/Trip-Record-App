@@ -75,6 +75,17 @@ export function ClaimMember({ email, userId, onClose }: ClaimMemberProps) {
             <Button variant="secondary" style={{ width: '100%' }} onClick={() => refetch()}>重試</Button>
             <Button variant="ghost" style={{ width: '100%', marginTop: 8 }} onClick={onClose}>稍後再說</Button>
           </div>
+        ) : members.length === 0 ? (
+          // 查詢成功卻拿到空名單：成員資料存在的話不該發生，
+          // 通常是資料庫權限（RLS）把登入者擋掉了，勿誤判為「全被認領」
+          <div className="text-center py-4">
+            <p style={{ color: 'var(--color-ink)' }} className="text-sm font-bold mb-2">讀不到成員名單</p>
+            <p style={{ color: 'var(--color-ink-muted)' }} className="text-xs mb-4">
+              名單是空的，可能是資料庫權限設定問題，請聯絡管理者確認。
+            </p>
+            <Button variant="secondary" style={{ width: '100%' }} onClick={() => refetch()}>重試</Button>
+            <Button variant="ghost" style={{ width: '100%', marginTop: 8 }} onClick={onClose}>稍後再說</Button>
+          </div>
         ) : unbound.length === 0 ? (
           <div className="text-center py-4">
             <p style={{ color: 'var(--color-ink)' }} className="text-sm font-bold mb-2">所有成員都已被認領</p>

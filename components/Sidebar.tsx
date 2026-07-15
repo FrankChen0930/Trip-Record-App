@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Home, Tags, Users, Map, Book, DollarSign, Camera, LayoutDashboard, X, FileText } from 'lucide-react';
+import { AuthStatus } from '@/features/auth/components/AuthStatus';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -54,7 +55,11 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
           )}
         </nav>
 
-        <div className="p-6 border-t border-gray-100">
+        <div className="px-4 py-3 border-t border-gray-100">
+          <AuthStatus onNavigate={onClose} />
+        </div>
+
+        <div className="p-6 pt-3 border-t border-gray-100">
           <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest">Trip Record App</p>
           <p className="text-[8px] text-gray-200 font-mono mt-1">v0.3.0 — Groups + Journal</p>
         </div>

@@ -1,6 +1,6 @@
 # STATUS — Travel Record App 重構進度與交接
 
-> 最後更新：2026-07-15（深夜；P2 認領流程驗證中，明日待辦見 P2 段落）
+> 最後更新：2026-07-15（找到「所有成員都已被認領」根因＝遺留 RLS，待使用者跑 SQL；見 P2 段落）
 > 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
 > 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
 
@@ -78,20 +78,38 @@ features/<name>/
 
 ## 目前卡在哪 / 各階段下一步
 
-### P2（Auth + RLS）— 程式已完成，認領流程驗證到一半（2026-07-15 深夜暫停）
+### P2（Auth + RLS）— 找到登入後讀不到資料的根因，等一個 SQL 步驟（2026-07-15）
 
-**明日待辦（接手先看這裡）**：
-1. **完成認領流程 end-to-end 驗證**：上次卡在 Supabase 內建 SMTP 的「email rate limit exceeded」
-   （免費內建信箱每小時只能寄 2~4 封，測試時很容易撞到；等額度重置即可，或見下方 SMTP 註記）。
-   驗證步驟：/login 寄信登入 → 認領畫面列出 4 位成員（豆腐/芙芙/LuBu/銅魔像）→ 錯誤 PIN 被拒 →
-   正確 PIN 綁定成功 → 重新整理不再出現認領畫面 → Supabase 查 `trip_members` 確認 `user_id`/`email` 已寫入。
-2. **首頁加登入入口**：使用者要求在主頁面放一個 login 按鈕/入口（目前只能手打網址 /login，體驗差）。
-   建議：Sidebar 或首頁頂部放「登入/已登入身分」入口，未登入顯示「登入」、已登入顯示暱稱或登出。
+**🔴 根因（2026-07-15 確診）：建站初期遺留的 RLS + anon-only policy**
+- 專案最初建表時就開了 RLS，policy 只授權 `anon` 角色（見 README「配置正確的 anon 存取權限」）。
+- 未登入時走 anon → 一切正常，所以先前誤判「RLS 未開」；
+  **登入後**改用 authenticated 角色 → 沒有任何 policy 適用 → 所有表回 `200 []`（不報錯）。
+- 症狀對照：認領畫面顯示「所有成員都已被認領」（成員名單被 RLS 濾成空）＝此因；
+  先前「登入過的瀏覽器旅程/成員消失、Clear site data 恢復」也是此因
+  （清資料＝登出＝變回 anon），**並非**舊 session 殘留——舊結論已修正。
+- 已驗證：DB 內 4 位成員 `user_id` 全為 null（沒有被誤認領）；anon REST 查詢正常；
+  部署 bundle 為最新版且指向正確 Supabase 專案。
 
-**已驗證正常（今日排查結論，勿重查）**：
+**待辦（接手先看這裡）**：
+1. **【使用者手動】Supabase SQL Editor 執行 `supabase/migrations/p2a_disable_legacy_rls.sql`**
+   （關閉所有遺留 RLS；腳本內含事前/事後驗證查詢）。跑完不用重寄信，重新整理頁面即可。
+2. **完成認領流程 end-to-end 驗證**（原步驟不變）：登入後認領畫面列出 4 位成員（豆腐/芙芙/LuBu/銅魔像）
+   → 錯誤 PIN 被拒 → 正確 PIN 綁定成功 → 重新整理不再出現認領畫面 →
+   Supabase 查 `trip_members` 確認 `user_id`/`email` 已寫入。
+   （注意 email rate limit：內建 SMTP 每小時只能寄 2~4 封；已有 session 就不用重寄。）
+3. 其餘 3 位成員各自登入認領 → 之後即可進 P2b。
+
+**2026-07-15 已完成的程式修正**：
+- `ClaimMember`：空名單（異常，多為權限問題）與「全被認領」分開顯示，前者提供重試。
+- `p2b_enable_rls.sql`：開頭加「drop 掉 public schema 全部舊 policy」，避免撞名 +
+  防止遺留 anon policy 讓未登入者繞過 RLS。
+- **首頁登入入口完成**：`features/auth/components/AuthStatus.tsx` 放在 Sidebar 底部——
+  未登入顯示「登入」連結；已登入顯示綁定成員暱稱（未綁定則 email）+ 登出鈕
+  （登出會清 `localStorage.my_member_id`）。
+
+**已驗證正常（排查結論，勿重查）**：
 - Vercel Git 整合曾斷線（4/7 後的 push 都沒觸發部署），使用者已重新連結，現在 push 會自動部署。
-- 部署 bundle 的 Supabase URL/anon key 與本機一致且有效；資料都在；RLS 未開；CORS 正常。
-- 「旅程/成員消失」是使用者瀏覽器殘留的舊 session/localStorage 造成（Clear site data 後恢復），非程式問題。
+- 部署 bundle 的 Supabase URL/anon key 與本機一致且有效；資料都在；CORS 正常。
 - Supabase 後台：Email provider 已啟用、Site URL 與 Redirect URLs 已設好（trip-record-app.vercel.app）。
 
 **SMTP 註記**：正式讓大家綁定前，若 rate limit 很煩，可在 Supabase → Project Settings → Auth 接自訂 SMTP
