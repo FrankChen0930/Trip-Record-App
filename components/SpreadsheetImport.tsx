@@ -375,8 +375,8 @@ export default function SpreadsheetImport({ tripId, tripInfo, onImportComplete, 
                 <p className="text-xs font-bold mb-1">📐 橫向格式（推薦）</p>
                 <p className="text-[10px] text-gray-400">每天佔 3 欄（時間、行程、備註），天數從左到右排列</p>
                 <div className="flex gap-1 mt-2">
-                  <span className="text-[8px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded">第一天|時間|行程|備註</span>
-                  <span className="text-[8px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded">第二天|時間|行程|備註</span>
+                  <span className="text-[8px] bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded">第一天|時間|行程|備註</span>
+                  <span className="text-[8px] bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded">第二天|時間|行程|備註</span>
                 </div>
               </div>
               <div className="bg-white p-3 rounded-xl border border-gray-100">
@@ -387,7 +387,7 @@ export default function SpreadsheetImport({ tripId, tripInfo, onImportComplete, 
           </div>
 
           <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileSelect} className="hidden" id="spreadsheet-file" />
-          <label htmlFor="spreadsheet-file" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm cursor-pointer inline-block hover:bg-blue-700 active:scale-[0.98] transition-all shadow-lg">
+          <label htmlFor="spreadsheet-file" className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-sm cursor-pointer inline-block hover:bg-[var(--color-primary-strong)] active:scale-[0.98] transition-all shadow-lg">
             選擇檔案
           </label>
         </div>
@@ -402,7 +402,7 @@ export default function SpreadsheetImport({ tripId, tripInfo, onImportComplete, 
                 {file?.name} · {parsedRows.length} 筆 · {detectedFormat === 'horizontal' ? '橫向格式' : '縱向格式'}
               </p>
             </div>
-            <button onClick={() => { setStep('upload'); setFile(null); setParsedRows([]); }} className="text-xs text-blue-600 font-bold">重選</button>
+            <button onClick={() => { setStep('upload'); setFile(null); setParsedRows([]); }} className="text-xs text-[var(--color-primary-strong)] font-bold">重選</button>
           </div>
 
           <div className="bg-amber-50 rounded-xl p-3 mb-4 border border-amber-100">
@@ -417,7 +417,7 @@ export default function SpreadsheetImport({ tripId, tripInfo, onImportComplete, 
                   {items.map((item) => (
                     <div key={item._index} className="flex items-center gap-2 bg-gray-50 p-3 rounded-xl text-xs group">
                       <span className="font-mono text-gray-400 w-12 shrink-0">{item.start_time || '--:--'}</span>
-                      <span className="font-bold text-gray-800 flex-1 truncate">{item.location}</span>
+                      <span className="font-bold text-[var(--color-ink)] flex-1 truncate">{item.location}</span>
                       {item.note && <span className="text-[9px] text-gray-300 max-w-[80px] truncate">{item.note}</span>}
                       <span className="text-[9px] text-gray-400 shrink-0">{item.transport_type}</span>
                       <button onClick={() => removeRow(item._index)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0">✕</button>
@@ -430,7 +430,7 @@ export default function SpreadsheetImport({ tripId, tripInfo, onImportComplete, 
 
           <div className="flex gap-3 mt-6">
             <button onClick={onClose} className="flex-1 py-4 bg-gray-50 rounded-2xl font-bold hover:bg-gray-100 transition-colors">取消</button>
-            <button onClick={handleImport} disabled={parsedRows.length === 0} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all hover:bg-emerald-700 disabled:opacity-30">
+            <button onClick={handleImport} disabled={parsedRows.length === 0} className="flex-1 py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all hover:bg-[var(--color-primary-strong)] disabled:opacity-30">
               確認匯入 {parsedRows.length} 筆
             </button>
           </div>

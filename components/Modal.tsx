@@ -40,7 +40,7 @@ export default function Modal({ isOpen, onClose, children, title }: ModalProps) 
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <h2 className="text-2xl font-black mb-8 tracking-tighter italic">{title}</h2>
+          <h2 className="text-xl font-black mb-6 tracking-tight" style={{ color: 'var(--color-ink)' }}>{title}</h2>
         )}
         {children}
       </div>

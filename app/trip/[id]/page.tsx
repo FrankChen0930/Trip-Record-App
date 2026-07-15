@@ -191,7 +191,7 @@ export default function TripMasterPage() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen text-black relative font-sans overflow-x-hidden">
+    <div className="min-h-screen relative font-sans overflow-x-hidden" style={{ background: 'var(--color-bg-page)', color: 'var(--color-ink)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="itinerary" />
 
       <div className="fixed top-6 left-6 z-[100]">
@@ -203,7 +203,7 @@ export default function TripMasterPage() {
       {/* 封面區域 */}
       <div className="fixed top-0 left-0 w-full z-0 h-[300px] bg-gray-900">
         <img src={tripInfo?.cover_url || ''} className="w-full h-full object-cover" style={{ opacity: Math.max(0, 1 - scrollY/300), transform: `scale(${1 + scrollY * 0.001})` }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#F2FAF7] via-transparent to-black/30" />
         <div className="absolute bottom-20 left-6 right-6 text-white z-10" style={{ opacity: Math.max(0, 1 - scrollY/200) }}>
           <h1 className="text-3xl font-black drop-shadow-lg tracking-tight">{tripInfo?.name}</h1>
           <p className="text-[10px] font-bold text-white/60 uppercase tracking-[0.2em] mt-1">{tripInfo?.start_date} — {tripInfo?.end_date}</p>
@@ -212,7 +212,7 @@ export default function TripMasterPage() {
 
       <div className="relative z-10" style={{ marginTop: '240px' }}>
         {/* 日期選擇器 */}
-        <div className="sticky top-0 z-[50] py-5 bg-gradient-to-b from-gray-50/95 via-gray-50/90 to-gray-50 backdrop-blur-md">
+        <div className="sticky top-0 z-[50] py-5 bg-gradient-to-b from-[#F2FAF7]/95 via-[#F2FAF7]/90 to-[#F2FAF7] backdrop-blur-md">
           <div className="flex items-center overflow-x-auto scrollbar-hide px-4 snap-x snap-mandatory h-24 perspective-[1200px]">
             <div className="flex gap-4 items-center mx-auto px-10">
               {days.map(d => {
@@ -229,11 +229,11 @@ export default function TripMasterPage() {
                       transition: 'all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)'
                     }}
                     className={`flex-none w-20 h-20 snap-center rounded-2xl font-black shadow-lg border-2 flex flex-col items-center justify-center transition-all ${
-                      activeDay === d ? 'bg-blue-600 text-white border-blue-400 scale-110 z-20' : 'bg-white text-gray-400 border-gray-100 z-10 hover:border-blue-200'
+                      activeDay === d ? 'bg-[var(--color-primary)] text-white border-[var(--color-accent2)] scale-110 z-20' : 'bg-white text-[var(--color-ink-muted)] border-[var(--color-border-hairline)] z-10 hover:border-[#9BDCC4]'
                     }`}
                   >
                     <span className="text-[10px] font-bold">D{d}</span>
-                    <span className={`text-[9px] mt-0.5 ${activeDay === d ? 'text-blue-200' : 'text-gray-300'}`}>{getDayDate(d)}</span>
+                    <span className={`text-[9px] mt-0.5 ${activeDay === d ? 'text-white/70' : 'text-[#B6C6BF]'}`}>{getDayDate(d)}</span>
                   </button>
                 );
               })}
@@ -241,9 +241,9 @@ export default function TripMasterPage() {
           </div>
         </div>
 
-        <div className="bg-gray-50 min-h-screen px-6 pb-40 rounded-t-[3rem]">
+        <div className="min-h-screen px-6 pb-40 rounded-t-[3rem]" style={{ background: 'var(--color-bg-page)' }}>
           <div className="max-w-xl mx-auto relative pt-8">
-            <div className="absolute left-[52px] top-0 bottom-0 w-1 bg-gray-200/50 rounded-full" />
+            <div className="absolute left-[52px] top-0 bottom-0 w-1 bg-[#D8EBE3] rounded-full" />
 
             <div className="space-y-10 relative">
               {loading ? <ItinerarySkeleton /> :
@@ -274,11 +274,11 @@ export default function TripMasterPage() {
                       </div>
                     </div>
 
-                    <div className="absolute left-[52px] top-8 -translate-x-1/2 w-5 h-5 rounded-full border-4 border-gray-50 bg-blue-600 z-30 shadow-[0_0_15px_rgba(37,99,235,0.4)] group-hover:scale-125 transition-transform" />
+                    <div className="absolute left-[52px] top-8 -translate-x-1/2 w-5 h-5 rounded-full border-4 border-[var(--color-bg-page)] bg-[var(--color-primary)] z-30 shadow-[0_0_15px_rgba(29,158,117,0.4)] group-hover:scale-125 transition-transform" />
 
                     <div className="relative">
                       <div className="flex items-center gap-2 mb-2 font-mono text-[10px] font-black">
-                        <span className="bg-gray-900 text-white px-3 py-1 rounded-xl shadow-sm flex items-center gap-1">
+                        <span className="bg-[var(--color-ink)] text-white px-3 py-1 rounded-xl shadow-sm flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {item.start_time?.substring(0, 5)} {item.end_time && `~ ${item.end_time.substring(0, 5)}`}
                         </span>
@@ -295,12 +295,12 @@ export default function TripMasterPage() {
                                           isAccommodation ? 'bg-purple-50/80 border-purple-100 shadow-[0_8px_30px_rgba(168,85,247,0.06)]' :
                                           isOptional ? 'bg-blue-50/40 border-blue-200 border-dashed shadow-[0_8px_30px_rgba(59,130,246,0.04)]' :
                                           isTicket ? 'bg-amber-50/80 border-amber-200 border-dashed shadow-sm' :
-                                          'bg-white border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.08)]';
+                                          'bg-white border-[var(--color-border-hairline)] shadow-[0_8px_30px_rgba(15,110,86,0.04)] hover:shadow-[0_12px_45px_rgba(15,110,86,0.08)]';
                                           
-                        const titleColor = isTransitItem ? 'text-indigo-900' : isFood ? 'text-orange-950' : isAccommodation ? 'text-purple-950' : 'text-gray-900';
+                        const titleColor = isTransitItem ? 'text-indigo-900' : isFood ? 'text-orange-950' : isAccommodation ? 'text-purple-950' : 'text-[var(--color-ink)]';
 
                         return (
-                          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${cardStyle}`}>
+                          <div className={`p-6 rounded-xl border transition-all duration-300 ${cardStyle}`}>
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex-1">
                                 {isOptional && <span className="text-[8px] bg-blue-500 text-white px-2 py-0.5 rounded-full mb-1 inline-block font-black">OPTIONAL</span>}
@@ -316,7 +316,7 @@ export default function TripMasterPage() {
                                     try {
                                       const urls = JSON.parse(item.map_url) as {name: string, url: string}[];
                                       return urls.map((u, i) => (
-                                        <a key={i} href={u.url} target="_blank" className="relative group/btn w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100 text-emerald-600">
+                                        <a key={i} href={u.url} target="_blank" className="relative group/btn w-9 h-9 bg-[var(--color-bg-page)] shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-[var(--color-border-hairline)] text-[var(--color-primary-strong)]">
                                           <MapPin className="w-4 h-4" />
                                           <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white text-[10px] py-1 px-2 rounded-lg opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-opacity font-bold">
                                             {u.name}
@@ -326,15 +326,15 @@ export default function TripMasterPage() {
                                     } catch (e) {}
                                   }
                                   return (
-                                    <a href={item.map_url} target="_blank" className="w-9 h-9 bg-gray-50 shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-gray-100 text-emerald-600"><MapPin className="w-4 h-4" /></a>
+                                    <a href={item.map_url} target="_blank" className="w-9 h-9 bg-[var(--color-bg-page)] shadow-sm rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all text-base border border-[var(--color-border-hairline)] text-[var(--color-primary-strong)]"><MapPin className="w-4 h-4" /></a>
                                   );
                                 })()}
-                                <button onClick={() => handleEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all"><Edit2 className="w-4 h-4" /></button>
-                                <button onClick={() => handleDelete(item.id)} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => handleEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all"><Edit2 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDelete(item.id)} className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-4 h-4" /></button>
                               </div>
                             </div>
 
-                            {item.note && <p className="text-xs text-gray-400 mb-4 italic leading-relaxed">{item.note}</p>}
+                            {item.note && <p className="text-xs text-[var(--color-ink-muted)] mb-4 italic leading-relaxed">{item.note}</p>}
 
                             {isTicket && (
                               <div className="space-y-2 pt-4 border-t border-amber-200/50">
@@ -342,7 +342,7 @@ export default function TripMasterPage() {
                                   const status = item.member_statuses?.find((s) => s.member_name === name);
                                   return (
                                     <div key={name} className="flex items-center justify-between bg-white/70 p-3 rounded-xl border border-amber-100/50">
-                                      <span className={`text-[10px] font-black ${status?.is_ready ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                      <span className={`text-[10px] font-black ${status?.is_ready ? 'text-[var(--color-primary-strong)]' : 'text-[var(--color-ink-muted)]'}`}>
                                         {name} {status?.is_ready ? '● 已取票' : '○ 待處理'}
                                       </span>
                                       <div className="flex gap-2">
@@ -362,9 +362,9 @@ export default function TripMasterPage() {
                 );
               }) : (
                 <div className="empty-state">
-                  <div className="empty-state-icon"><PenTool className="w-12 h-12 text-gray-300" /></div>
-                  <h3 className="text-lg font-bold text-gray-300 mb-2">今天還沒有行程</h3>
-                  <p className="text-sm text-gray-300">點擊右下角的 + 按鈕新增行程！</p>
+                  <div className="empty-state-icon"><PenTool className="w-12 h-12" style={{ color: 'var(--color-ink-muted)', opacity: 0.6 }} /></div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>今天還沒有行程</h3>
+                  <p className="text-sm" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>點擊右下角的 + 按鈕新增行程！</p>
                 </div>
               )}
             </div>
@@ -375,10 +375,10 @@ export default function TripMasterPage() {
               if (!todaysAcc) return null;
               return (
                 <div className="relative pl-32 mt-12 mb-10 group">
-                  <div className="absolute left-[36px] top-6 w-8 h-8 rounded-full border-4 border-gray-50 bg-indigo-500 z-30 shadow-[0_0_15px_rgba(99,102,241,0.4)] flex items-center justify-center text-white">
+                  <div className="absolute left-[36px] top-6 w-8 h-8 rounded-full border-4 border-[var(--color-bg-page)] bg-indigo-500 z-30 shadow-[0_0_15px_rgba(99,102,241,0.4)] flex items-center justify-center text-white">
                     <Bed className="w-3.5 h-3.5" />
                   </div>
-                  <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/90 p-6 rounded-[2rem] border border-indigo-100 shadow-[0_8px_30px_rgba(99,102,241,0.06)] relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/90 p-6 rounded-xl border border-indigo-100 shadow-[0_8px_30px_rgba(99,102,241,0.06)] relative overflow-hidden">
                     <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-100/50 px-3 py-1 rounded-full mb-3 inline-block">本日住宿 Accommodation</span>
                     <h3 className="text-xl font-black text-indigo-950 mb-4">{todaysAcc.name}</h3>
                     <div className="flex gap-3">
@@ -394,10 +394,10 @@ export default function TripMasterPage() {
       </div>
 
       <div className="fixed bottom-6 right-6 z-[400] flex flex-col gap-2 items-end">
-        <button onClick={() => setImportOpen(true)} className="w-12 h-12 bg-blue-500 text-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-blue-600 active:scale-95 transition-all" title="匯入試算表">
+        <button onClick={() => setImportOpen(true)} className="w-12 h-12 bg-[var(--color-accent2)] text-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-[var(--color-primary)] active:scale-95 transition-all" title="匯入試算表">
           <DownloadCloud className="w-5 h-5"/>
         </button>
-        <button onClick={() => { resetForm(); setDay(activeDay); setFormOpen(true); }} className="w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.3)] flex items-center justify-center hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] active:scale-95 transition-all">
+        <button onClick={() => { resetForm(); setDay(activeDay); setFormOpen(true); }} className="w-14 h-14 bg-[var(--color-primary)] text-white rounded-2xl shadow-[0_8px_30px_rgba(15,110,86,0.35)] flex items-center justify-center hover:shadow-[0_12px_40px_rgba(15,110,86,0.45)] active:scale-95 transition-all">
           <Plus className="w-8 h-8" />
         </button>
       </div>
@@ -406,34 +406,34 @@ export default function TripMasterPage() {
       <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editingId ? '編輯行程' : '新增行程'}>
         <form onSubmit={handleSubmit}>
           <div className="flex gap-2 mb-6 font-bold">
-            <button type="button" onClick={() => setItemType('activity')} className={`flex-1 py-3 rounded-2xl text-xs transition-all ${itemType === 'activity' ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-50 hover:bg-gray-100'}`}>一般行程</button>
-            <button type="button" onClick={() => { setItemType('ticket'); setTransport('高鐵'); }} className={`flex-1 py-3 rounded-2xl text-xs transition-all ${itemType === 'ticket' ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-50 hover:bg-gray-100'}`}>交通票券</button>
+            <button type="button" onClick={() => setItemType('activity')} className={`flex-1 py-3 rounded-2xl text-xs transition-all ${itemType === 'activity' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-[#EEF1F0] hover:bg-[#E1E7E4]'}`}>一般行程</button>
+            <button type="button" onClick={() => { setItemType('ticket'); setTransport('高鐵'); }} className={`flex-1 py-3 rounded-2xl text-xs transition-all ${itemType === 'ticket' ? 'bg-amber-600 text-white shadow-md' : 'bg-[#EEF1F0] hover:bg-[#E1E7E4]'}`}>交通票券</button>
           </div>
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="bg-gray-50 p-4 rounded-2xl outline-none font-bold text-sm" />
-              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="bg-gray-50 p-4 rounded-2xl outline-none font-bold text-sm" />
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-bold text-sm" />
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-bold text-sm" />
             </div>
-            <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black focus:ring-2 focus:ring-blue-500 transition-all" placeholder="地點 (例: 騎車90分鐘 / 台中隨興)" />
+            <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-black focus:ring-2 focus:ring-[var(--color-primary)] transition-all" placeholder="地點 (例: 騎車90分鐘 / 台中隨興)" />
 
             <div className="relative">
               {spots.length <= 1 ? (
                 <div className="relative">
-                  <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} className="w-full bg-blue-50 p-4 pl-12 rounded-2xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all font-bold" placeholder="Google Maps 分享連結" />
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
+                  <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} className="w-full bg-[#E4F5EE] p-4 pl-12 rounded-xl outline-none border border-[#C4DED3] text-xs font-mono focus:ring-2 focus:ring-[var(--color-primary)] transition-all font-bold" placeholder="Google Maps 分享連結" />
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-primary)]" />
                 </div>
               ) : (
-                <div className="space-y-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-50">
-                  <div className="text-xs font-bold text-blue-800 mb-2 flex items-center gap-1"><MapPin className="w-4 h-4"/> 設定多個景點連結</div>
+                <div className="space-y-3 bg-[#E4F5EE]/60 p-4 rounded-xl border border-[#C4DED3]">
+                  <div className="text-xs font-bold text-[var(--color-primary-strong)] mb-2 flex items-center gap-1"><MapPin className="w-4 h-4"/> 設定多個景點連結</div>
                   {spots.map((spot, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <div className="w-1/3 text-xs font-bold text-gray-600 truncate" title={spot}>{spot}</div>
+                      <div className="w-1/3 text-xs font-bold text-[var(--color-ink-muted)] truncate" title={spot}>{spot}</div>
                       <div className="relative flex-1">
                         <input 
                           value={spotUrls[spot] || ''} 
                           onChange={e => setSpotUrls(prev => ({...prev, [spot]: e.target.value}))}
-                          className="w-full bg-white p-3 rounded-xl outline-none border border-blue-100 text-xs font-mono focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+                          className="w-full bg-white p-3 rounded-xl outline-none border border-[#C4DED3] text-xs font-mono focus:ring-2 focus:ring-[var(--color-primary)] transition-all shadow-sm"
                           placeholder={`${spot} 連結`}
                         />
                       </div>
@@ -443,19 +443,19 @@ export default function TripMasterPage() {
               )}
             </div>
 
-            <select value={transport} onChange={e => setTransport(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black appearance-none">
+            <select value={transport} onChange={e => setTransport(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-black appearance-none">
               {itemType === 'ticket' ? (
                 <><option>高鐵</option><option>火車</option><option>其他</option></>
               ) : (
                 <><option>機車</option><option>汽車</option><option>火車</option><option>高鐵</option><option>步行</option></>
               )}
             </select>
-            <textarea value={note} onChange={e => setNote(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl h-24 outline-none resize-none font-medium focus:ring-2 focus:ring-blue-500 transition-all" placeholder="備註..." />
+            <textarea value={note} onChange={e => setNote(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl h-24 outline-none resize-none font-medium focus:ring-2 focus:ring-[var(--color-primary)] transition-all" placeholder="備註..." />
           </div>
 
           <div className="flex gap-4 mt-8">
-            <button type="button" onClick={() => setFormOpen(false)} className="flex-1 py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors">取消</button>
-            <button type="submit" className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all hover:bg-blue-700">儲存行程</button>
+            <button type="button" onClick={() => setFormOpen(false)} className="flex-1 py-4 text-[var(--color-ink-muted)] font-bold hover:text-[var(--color-ink)] transition-colors">取消</button>
+            <button type="submit" className="flex-1 py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all hover:bg-[var(--color-primary-strong)]">儲存行程</button>
           </div>
         </form>
       </Modal>

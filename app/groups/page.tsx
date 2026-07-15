@@ -95,11 +95,11 @@ export default function GroupsPage() {
   const colorOptions = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
   return (
-    <div className="bg-gray-50 min-h-screen text-black relative font-sans">
+    <div className="min-h-screen relative font-sans" style={{ background: 'var(--color-bg-page)', color: 'var(--color-ink)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="groups" />
 
-      <div className="px-4 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-lg sticky top-0 z-30">
-        <button onClick={() => setSidebarOpen(true)} className="sidebar-hamburger p-2.5 hover:bg-gray-100 rounded-xl transition-colors">☰</button>
+      <div className="px-4 py-4 border-b border-[var(--color-border-hairline)] flex items-center bg-white/90 backdrop-blur-lg sticky top-0 z-30">
+        <button onClick={() => setSidebarOpen(true)} className="sidebar-hamburger p-2.5 hover:bg-[var(--color-primary-soft)] rounded-xl transition-colors">☰</button>
         <h1 className="ml-4 font-bold text-lg tracking-tight">身分組管理</h1>
       </div>
 
@@ -107,17 +107,17 @@ export default function GroupsPage() {
         <div className="flex justify-between items-end mb-4">
           <div>
             <h2 className="text-3xl font-black tracking-tighter italic">GROUPS</h2>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.3em]">Discord-style role system</p>
+            <p className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase tracking-[0.3em]">Discord-style role system</p>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-gray-300">載入中...</div>
+          <div className="text-center py-16" style={{ color: 'var(--color-ink-muted)' }}>載入中...</div>
         ) : groups.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">🏷️</div>
-            <h3 className="text-lg font-bold text-gray-300 mb-2">還沒有群組</h3>
-            <p className="text-sm text-gray-300 mb-6">建立群組來分隔不同旅行團體的內容！</p>
+            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>還沒有群組</h3>
+            <p className="text-sm mb-6" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>建立群組來分隔不同旅行團體的內容！</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -125,20 +125,20 @@ export default function GroupsPage() {
               const gMembers = getGroupMembers(group.id);
               const isManaging = managingGroupId === group.id;
               return (
-                <div key={group.id} className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden card-hover">
+                <div key={group.id} className="bg-white rounded-xl shadow-sm border border-[var(--color-border-hairline)] overflow-hidden card-hover">
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{group.icon}</span>
                         <div>
                           <h3 className="font-bold text-lg">{group.name}</h3>
-                          <p className="text-[10px] text-gray-400">{gMembers.length} 位成員</p>
+                          <p className="text-[10px] text-[var(--color-ink-muted)]">{gMembers.length} 位成員</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: group.color }} />
-                        <button onClick={() => openEditModal(group)} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all">✎</button>
-                        <button onClick={() => handleDeleteGroup(group.id, group.name)} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">✕</button>
+                        <button onClick={() => openEditModal(group)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all">✎</button>
+                        <button onClick={() => handleDeleteGroup(group.id, group.name)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-red-500 hover:bg-red-50 transition-all">✕</button>
                       </div>
                     </div>
 
@@ -151,7 +151,7 @@ export default function GroupsPage() {
                       ))}
                       <button
                         onClick={() => setManagingGroupId(isManaging ? null : group.id)}
-                        className="text-[10px] text-gray-400 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors font-bold"
+                        className="text-[10px] text-[var(--color-ink-muted)] px-2 py-1 rounded-lg hover:bg-[var(--color-primary-soft)] transition-colors font-bold"
                       >
                         {isManaging ? '收合' : '+ 管理成員'}
                       </button>
@@ -160,8 +160,8 @@ export default function GroupsPage() {
 
                   {/* 成員管理展開 */}
                   {isManaging && (
-                    <div className="border-t border-gray-100 p-4 bg-gray-50/50">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-3">點擊成員加入/移除此群組</p>
+                    <div className="border-t border-[var(--color-border-hairline)] p-4 bg-[var(--color-bg-page)]">
+                      <p className="text-[10px] font-bold text-[var(--color-ink-muted)] uppercase mb-3">點擊成員加入/移除此群組</p>
                       <div className="flex flex-wrap gap-2">
                         {members.map(m => {
                           const isIn = groupMembers.some(gm => gm.group_id === group.id && gm.member_id === m.id);
@@ -172,7 +172,7 @@ export default function GroupsPage() {
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                                 isIn
                                   ? 'text-white shadow-md scale-105'
-                                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                  : 'bg-[#EEF1F0] text-[var(--color-ink-muted)] hover:bg-[#E1E7E4]'
                               }`}
                               style={isIn ? { backgroundColor: group.color } : {}}
                             >
@@ -191,7 +191,7 @@ export default function GroupsPage() {
 
         <button
           onClick={() => { closeModal(); setModalOpen(true); }}
-          className="w-full border-2 border-dashed border-gray-200 py-4 rounded-2xl text-sm text-gray-400 hover:bg-gray-100 hover:border-gray-300 hover:text-gray-600 transition-all font-medium"
+          className="w-full border-2 border-dashed border-[#C4DED3] py-4 rounded-xl text-sm text-[var(--color-ink-muted)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary-strong)] transition-all font-medium"
         >
           + 建立新群組
         </button>
@@ -202,25 +202,25 @@ export default function GroupsPage() {
         <form onSubmit={handleSaveGroup}>
           <div className="space-y-5">
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1 mb-2 block">群組名稱</label>
-              <input value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full bg-gray-50 border-none p-4 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-blue-500 transition-all" placeholder="例：家庭、大學好友" />
+              <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1 mb-2 block">群組名稱</label>
+              <input value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full bg-[var(--color-bg-page)] border-none p-4 rounded-xl outline-none font-bold focus:ring-2 focus:ring-[var(--color-primary)] transition-all" placeholder="例：家庭、大學好友" />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1 mb-2 block">圖標</label>
+              <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1 mb-2 block">圖標</label>
               <div className="flex flex-wrap gap-2">
                 {iconOptions.map(icon => (
                   <button key={icon} type="button" onClick={() => setGroupIcon(icon)}
-                    className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${groupIcon === icon ? 'bg-gray-900 shadow-md scale-110' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${groupIcon === icon ? 'bg-[var(--color-primary-soft)] ring-2 ring-[var(--color-primary)] shadow-md scale-110' : 'bg-[#EEF1F0] hover:bg-[#E1E7E4]'}`}
                   >{icon}</button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1 mb-2 block">標籤顏色</label>
+              <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1 mb-2 block">標籤顏色</label>
               <div className="flex flex-wrap gap-2">
                 {colorOptions.map(c => (
                   <button key={c} type="button" onClick={() => setGroupColor(c)}
-                    className={`w-8 h-8 rounded-full transition-all ${groupColor === c ? 'scale-125 ring-2 ring-offset-2 ring-gray-400' : 'hover:scale-110'}`}
+                    className={`w-8 h-8 rounded-full transition-all ${groupColor === c ? 'scale-125 ring-2 ring-offset-2 ring-[var(--color-primary)]' : 'hover:scale-110'}`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
@@ -228,8 +228,8 @@ export default function GroupsPage() {
             </div>
           </div>
           <div className="flex gap-3 mt-8">
-            <button type="button" onClick={closeModal} className="flex-1 py-4 bg-gray-50 rounded-2xl font-bold hover:bg-gray-100 transition-colors">取消</button>
-            <button type="submit" className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-bold active:scale-95 transition-all">{editingGroup ? '儲存' : '建立'}</button>
+            <button type="button" onClick={closeModal} className="flex-1 py-4 bg-[#EEF1F0] text-[var(--color-ink)] rounded-xl font-bold hover:bg-[#E1E7E4] transition-colors">取消</button>
+            <button type="submit" className="flex-1 py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold active:scale-95 transition-all hover:bg-[var(--color-primary-strong)]">{editingGroup ? '儲存' : '建立'}</button>
           </div>
         </form>
       </Modal>

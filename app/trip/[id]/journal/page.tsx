@@ -85,17 +85,17 @@ export default function JournalPage() {
   const charCount = content.length;
 
   return (
-    <div className="bg-gray-50 min-h-screen text-black relative font-sans overflow-x-hidden">
+    <div className="min-h-screen relative font-sans overflow-x-hidden" style={{ background: 'var(--color-bg-page)', color: 'var(--color-ink)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="journal" />
 
-      <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between bg-white/90 backdrop-blur-lg sticky top-0 z-30">
+      <div className="px-4 py-4 border-b border-[#E8F3EE] flex items-center justify-between bg-white/90 backdrop-blur-lg sticky top-0 z-30">
         <div className="flex items-center">
-          <button onClick={() => setSidebarOpen(true)} className="sidebar-hamburger p-2.5 hover:bg-gray-100 rounded-xl transition-colors">☰</button>
+          <button onClick={() => setSidebarOpen(true)} className="sidebar-hamburger p-2.5 hover:bg-[var(--color-primary-soft)] rounded-xl transition-colors">☰</button>
           <h1 className="ml-4 font-bold text-lg tracking-tight">每日日記</h1>
         </div>
         <div className="flex items-center gap-2">
-          {saving && <span className="text-[9px] text-blue-500 font-bold animate-pulse">儲存中...</span>}
-          {!saving && lastSaved && <span className="text-[9px] text-gray-400 font-mono">已存 {lastSaved}</span>}
+          {saving && <span className="text-[9px] text-[var(--color-primary-strong)] font-bold animate-pulse">儲存中...</span>}
+          {!saving && lastSaved && <span className="text-[9px] text-[var(--color-ink-muted)] font-mono">已存 {lastSaved}</span>}
         </div>
       </div>
 
@@ -103,7 +103,7 @@ export default function JournalPage() {
         {/* 旅程名稱 */}
         <div className="mb-6">
           <h2 className="text-2xl font-black tracking-tight">{tripInfo?.name || '...'}</h2>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1">Travel Journal · 旅行日誌</p>
+          <p className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase tracking-[0.2em] mt-1">Travel Journal · 旅行日誌</p>
         </div>
 
         {/* 日期選擇器（水平捲動） */}
@@ -116,30 +116,30 @@ export default function JournalPage() {
                 onClick={() => setActiveDay(d)}
                 className={`flex-none flex flex-col items-center px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border-2 ${
                   activeDay === d
-                    ? 'bg-gray-900 text-white border-gray-900 shadow-lg'
+                    ? 'bg-[var(--color-ink)] text-white border-[var(--color-ink)] shadow-lg'
                     : hasDiary
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300'
+                    ? 'bg-[var(--color-primary-soft)] border-[#9BDCC4] text-[var(--color-primary-strong)]'
+                    : 'bg-white border-[var(--color-border-hairline)] text-[var(--color-ink-muted)] hover:border-[#9BDCC4]'
                 }`}
               >
                 <span>D{d}</span>
-                <span className={`text-[9px] mt-0.5 ${activeDay === d ? 'text-gray-400' : ''}`}>{getDayDate(d)}</span>
-                {hasDiary && activeDay !== d && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1" />}
+                <span className={`text-[9px] mt-0.5 ${activeDay === d ? 'text-white/60' : ''}`}>{getDayDate(d)}</span>
+                {hasDiary && activeDay !== d && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent2)] mt-1" />}
               </button>
             );
           })}
         </div>
 
         {/* 編輯器卡片 */}
-        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E8F3EE] overflow-hidden min-h-[400px]">
           {/* 日期標頭 */}
-          <div className="px-6 pt-5 pb-3 border-b border-gray-50">
+          <div className="px-6 pt-5 pb-3 border-b border-[#E8F3EE]">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-gray-900">Day {activeDay}</h3>
-                <p className="text-[10px] text-gray-400">{getDayDate(activeDay)}</p>
+                <h3 className="font-bold text-[var(--color-ink)]">Day {activeDay}</h3>
+                <p className="text-[10px] text-[var(--color-ink-muted)]">{getDayDate(activeDay)}</p>
               </div>
-              <span className="text-[9px] text-gray-300 font-mono">{charCount} 字</span>
+              <span className="text-[9px] text-[#C4CFC9] font-mono">{charCount} 字</span>
             </div>
           </div>
 
@@ -154,7 +154,7 @@ export default function JournalPage() {
 
         {/* 日記概覽 */}
         <div className="mt-8">
-          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">日記進度</h3>
+          <h3 className="text-[10px] font-bold text-[var(--color-ink-muted)] uppercase tracking-widest mb-4">日記進度</h3>
           <div className="flex gap-1.5 flex-wrap">
             {days.map(d => (
               <div
@@ -162,15 +162,15 @@ export default function JournalPage() {
                 onClick={() => setActiveDay(d)}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold cursor-pointer transition-all ${
                   filledDays.includes(d)
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-300 hover:bg-gray-200'
-                } ${activeDay === d ? 'ring-2 ring-gray-900 ring-offset-2' : ''}`}
+                    ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                    : 'bg-[#EEF1F0] text-[#C4CFC9] hover:bg-[#E1E7E4]'
+                } ${activeDay === d ? 'ring-2 ring-[var(--color-ink)] ring-offset-2' : ''}`}
               >
                 {d}
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-gray-400 mt-3">{filledDays.length} / {days.length} 天已寫日記</p>
+          <p className="text-[10px] text-[var(--color-ink-muted)] mt-3">{filledDays.length} / {days.length} 天已寫日記</p>
         </div>
       </div>
 

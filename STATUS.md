@@ -23,7 +23,7 @@ Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · 
 | P2a | Auth 程式：/login(Magic Link)、useSession、綁定橋接（user_id→email→PIN 認領）、SQL、runbook | ✅ 程式完成（含自助 PIN 認領），**尚未啟用** |
 | P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ **擱置中**：使用者這幾天陸續讓成員登入綁定，到齊後再做（SQL 已備好） |
 | P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | ⬜ 未開始 |
-| P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面（目前只有 /login 用了新樣式） | ⬜ 未開始 |
+| P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面 | ✅ 完成（2026-07-15；photos 頁除外，留給 P3 重寫時套） |
 | P5a | 內建地圖（Leaflet） | ⬜ 未開始 |
 | P5b | 建議景點 + 交通時間（Google Places，需 API 金鑰） | ⬜ 未開始 |
 | P5c | AI 行程建議 | ⬜ 未開始（最後、可選） |
@@ -141,10 +141,15 @@ features/<name>/
   遷移：一次性腳本從 Google Drive 下載 → 上傳 R2 → 更新 DB（1.76GB 在 R2 免費 10GB 內）。
 - 需新增依賴：`@aws-sdk/client-s3`、`@aws-sdk/s3-request-presigner`；環境變數見架構文件第 7.5 節。
 
-### P4（視覺重構）
-- 把湖水青旅 tokens + `@/components/ui` primitives 套到全部頁面，統一 App Shell / 空狀態 / 載入 / 錯誤邊界；
-  保留特色元件（trip 主頁 3D 日期選擇器、支出進度條）。行動優先、明亮為主（深色模式可後補）。
-- 順手清掉 P1 遺留的 pre-existing lint 警告（`set-state-in-effect` 的 localStorage 讀取等，多會在改版時自然消失）。
+### P4（視覺重構）— ✅ 完成（2026-07-15）
+- 已把湖水青旅 tokens 套到全部頁面：globals.css 主題層（Toast/Modal/Confirm/BottomTabs/badges/hero 漸層）、
+  Sidebar/Skeleton/AuthStatus、首頁、members、groups、trip 主頁、plan、memo、journal、expense、SpreadsheetImport。
+- 特色元件保留（只換色不動互動）：trip 主頁 3D 日期選擇器、交通色帶、支出墊付進度條、封面視差。
+- **語意色刻意保留，勿「統一」掉**：交通工具色（機車藍/汽車綠/火車橙/高鐵紫/步行灰）、
+  行程分類卡（食=橙、宿=indigo/紫、移動=indigo、OPTIONAL=藍、票券=amber）、欠款紅、自訂分攤橙。
+- 驗證：typecheck ✅ / test 4/4 ✅ / build ✅ / lint 前後同為 65 個 pre-existing 問題（無新增回歸，
+  多為 SpreadsheetImport 的 no-explicit-any 與 set-state-in-effect 舊警告，可日後專門清）。
+- photos 頁未動（P3 重寫時直接用新設計）。深色模式未做（可後補）。
 
 ### P5a 地圖 / P5b 建議景點 / P5c AI
 - 地圖用已安裝的 Leaflet + 明亮 tile；POI 資料打 Google Places（伺服器端 Route Handler 代理隱藏金鑰）；

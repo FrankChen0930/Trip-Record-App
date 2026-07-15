@@ -176,7 +176,7 @@ export default function HomePage() {
   }, 0);
 
   return (
-    <div className="bg-gray-50 min-h-screen text-black relative font-sans">
+    <div className="min-h-screen relative font-sans" style={{ background: 'var(--color-bg-page)', color: 'var(--color-ink)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="itinerary" />
 
       {/* Hero 區域 */}
@@ -206,7 +206,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gray-50 rounded-t-[3rem]" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 rounded-t-[3rem]" style={{ background: 'var(--color-bg-page)' }} />
       </div>
 
       {/* 群組篩選 Tab */}
@@ -215,7 +215,7 @@ export default function HomePage() {
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
             <button
               onClick={() => setActiveGroupFilter(null)}
-              className={`flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${!activeGroupFilter ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+              className={`flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${!activeGroupFilter ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-white text-[var(--color-ink-muted)] border border-[var(--color-border-hairline)] hover:bg-[var(--color-primary-soft)]'}`}
             >
               全部
             </button>
@@ -224,7 +224,7 @@ export default function HomePage() {
                 key={g.id}
                 onClick={() => setActiveGroupFilter(activeGroupFilter === g.id ? null : g.id)}
                 className={`flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeGroupFilter === g.id ? 'text-white shadow-md' : 'bg-white border border-gray-100 hover:bg-gray-50'
+                  activeGroupFilter === g.id ? 'text-white shadow-md' : 'bg-white border border-[var(--color-border-hairline)] hover:bg-[var(--color-primary-soft)]'
                 }`}
                 style={activeGroupFilter === g.id ? { backgroundColor: g.color } : { color: g.color }}
               >
@@ -238,37 +238,37 @@ export default function HomePage() {
       {/* 旅程列表 */}
       <div className="max-w-xl mx-auto px-6 pb-32 page-content-mobile">
         <div className="relative">
-          <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-gray-200/60" />
+          <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[#D8EBE3]" />
           <div className="space-y-10">
             {loading ? (
               <><TripCardSkeleton /><TripCardSkeleton /><TripCardSkeleton /></>
             ) : filteredTrips.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🌍</div>
-                <h3 className="text-lg font-bold text-gray-300 mb-2">{activeGroupFilter ? '此群組還沒有旅程' : '還沒有旅程紀錄'}</h3>
-                <p className="text-sm text-gray-300 mb-6">點擊右下角的 + 按鈕開始你的冒險！</p>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>{activeGroupFilter ? '此群組還沒有旅程' : '還沒有旅程紀錄'}</h3>
+                <p className="text-sm mb-6" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>點擊右下角的 + 按鈕開始你的冒險！</p>
               </div>
             ) : filteredTrips.map((trip) => {
               const status = getTripStatus(trip);
               const group = getGroupForTrip(trip.group_id);
               return (
                 <div key={trip.id} ref={(el) => { tripRefs.current[trip.id] = el; }} className={`relative pl-10 group ${status.type === 'active' ? 'scale-[1.02]' : ''}`}>
-                  <div className={`absolute left-0 top-6 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-[3px] border-gray-50 z-10 group-hover:scale-125 transition-all duration-500 ${
-                    status.type === 'active' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : 'bg-gray-900 group-hover:bg-blue-600'
+                  <div className={`absolute left-0 top-6 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-[3px] border-[var(--color-bg-page)] z-10 group-hover:scale-125 transition-all duration-500 ${
+                    status.type === 'active' ? 'bg-[var(--color-primary)] shadow-[0_0_12px_rgba(29,158,117,0.5)]' : 'bg-[var(--color-ink)] group-hover:bg-[var(--color-primary)]'
                   }`} />
-                  <div className={`card-hover bg-white border rounded-[2rem] shadow-sm overflow-hidden ${
-                    status.type === 'active' ? 'border-emerald-200 shadow-emerald-100/50' : 'border-gray-100/80'
+                  <div className={`card-hover bg-white border rounded-xl shadow-sm overflow-hidden ${
+                    status.type === 'active' ? 'border-[#9BDCC4] shadow-[0_4px_24px_rgba(29,158,117,0.10)]' : 'border-[var(--color-border-hairline)]'
                   }`}>
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-3">
                         <Link href={`/trip/${trip.id}`} className="flex-1">
-                          <h2 className="text-xl font-black text-gray-900 hover:text-blue-600 transition-colors uppercase italic tracking-tight">{trip.name}</h2>
+                          <h2 className="text-xl font-black text-[var(--color-ink)] hover:text-[var(--color-primary-strong)] transition-colors uppercase italic tracking-tight">{trip.name}</h2>
                         </Link>
                         <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <button onClick={() => openEditModal(trip)} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
+                          <button onClick={() => openEditModal(trip)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                           </button>
-                          <button onClick={() => handleDeleteTrip(trip.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                          <button onClick={() => handleDeleteTrip(trip.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-red-500 hover:bg-red-50 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
@@ -286,14 +286,14 @@ export default function HomePage() {
                         )}
                       </div>
 
-                      <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-2">{trip.start_date} — {trip.end_date || 'ONGOING'}</p>
+                      <p className="text-[10px] text-[var(--color-ink-muted)] font-bold tracking-widest uppercase mt-2">{trip.start_date} — {trip.end_date || 'ONGOING'}</p>
                     </div>
                     <Link href={`/trip/${trip.id}`}>
-                      <div className="h-52 w-full bg-gray-100 border-t overflow-hidden relative">
+                      <div className="h-52 w-full bg-[#E8F3EE] border-t border-[var(--color-border-hairline)] overflow-hidden relative">
                         <img src={trip.cover_url || ''} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent group-hover:from-transparent transition-all duration-500" />
                         {status.type === 'active' && (
-                          <div className="absolute top-3 right-3 bg-emerald-500 text-white px-3 py-1 rounded-lg text-[10px] font-bold shadow-lg">
+                          <div className="absolute top-3 right-3 bg-[var(--color-primary)] text-white px-3 py-1 rounded-lg text-[10px] font-bold shadow-lg">
                             🔥 進行中
                           </div>
                         )}
@@ -307,7 +307,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <button onClick={() => { closeModal(); setModalOpen(true); }} className="fab-button bg-gray-900 text-white hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)]">+</button>
+      <button onClick={() => { closeModal(); setModalOpen(true); }} className="fab-button bg-[var(--color-primary)] text-white hover:shadow-[0_8px_40px_rgba(15,110,86,0.45)]">+</button>
       <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className={`back-to-top ${showBackToTop ? 'visible' : ''}`}>↑</button>
 
       {/* 新增/編輯 Modal */}
@@ -315,32 +315,32 @@ export default function HomePage() {
         <form onSubmit={handleSaveTrip}>
           <div className="space-y-6">
             <div>
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">旅程名稱</label>
-              <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 border-none p-4 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-blue-500 transition-all" placeholder="2026 畢業環島" />
+              <label className="text-[9px] font-black text-[var(--color-ink-muted)] uppercase tracking-[0.2em] ml-1 mb-2 block">旅程名稱</label>
+              <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-[var(--color-bg-page)] border-none p-4 rounded-xl outline-none font-bold focus:ring-2 focus:ring-[var(--color-primary)] transition-all" placeholder="2026 畢業環島" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">開始日期</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-gray-50 border-none p-4 rounded-2xl outline-none text-xs font-bold" />
+                <label className="text-[9px] font-black text-[var(--color-ink-muted)] uppercase tracking-[0.2em] ml-1 mb-2 block">開始日期</label>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-[var(--color-bg-page)] border-none p-4 rounded-xl outline-none text-xs font-bold" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">結束日期</label>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-gray-50 border-none p-4 rounded-2xl outline-none text-xs font-bold" />
+                <label className="text-[9px] font-black text-[var(--color-ink-muted)] uppercase tracking-[0.2em] ml-1 mb-2 block">結束日期</label>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-[var(--color-bg-page)] border-none p-4 rounded-xl outline-none text-xs font-bold" />
               </div>
             </div>
 
             {/* 群組選擇 */}
             {groups.length > 0 && (
               <div>
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">所屬群組（可選）</label>
+                <label className="text-[9px] font-black text-[var(--color-ink-muted)] uppercase tracking-[0.2em] ml-1 mb-2 block">所屬群組（可選）</label>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setSelectedGroupId(null)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${!selectedGroupId ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${!selectedGroupId ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)]'}`}
                   >不設群組</button>
                   {groups.map(g => (
                     <button key={g.id} type="button" onClick={() => setSelectedGroupId(g.id)}
                       className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
-                        selectedGroupId === g.id ? 'text-white shadow-md' : 'bg-gray-100 text-gray-400'
+                        selectedGroupId === g.id ? 'text-white shadow-md' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)]'
                       }`}
                       style={selectedGroupId === g.id ? { backgroundColor: g.color } : {}}
                     >{g.icon} {g.name}</button>
@@ -350,20 +350,20 @@ export default function HomePage() {
             )}
 
             <div>
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">封面圖片</label>
+              <label className="text-[9px] font-black text-[var(--color-ink-muted)] uppercase tracking-[0.2em] ml-1 mb-2 block">封面圖片</label>
               <div className="relative">
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" id="file-upload" />
-                <label htmlFor="file-upload" className="w-full bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all">
-                  {isUploading ? <span className="text-xs animate-pulse font-bold text-blue-500">UPLOADING...</span> :
+                <label htmlFor="file-upload" className="w-full bg-[var(--color-bg-page)] border-2 border-dashed border-[#C4DED3] p-6 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] transition-all">
+                  {isUploading ? <span className="text-xs animate-pulse font-bold text-[var(--color-primary-strong)]">UPLOADING...</span> :
                   coverUrl ? <img src={coverUrl} className="h-24 w-full object-cover rounded-2xl" /> :
-                  <div className="text-center"><span className="text-2xl block mb-2">📷</span><span className="text-[10px] text-gray-400 font-bold">點擊上傳封面照片</span></div>}
+                  <div className="text-center"><span className="text-2xl block mb-2">📷</span><span className="text-[10px] text-[var(--color-ink-muted)] font-bold">點擊上傳封面照片</span></div>}
                 </label>
               </div>
             </div>
           </div>
           <div className="flex gap-4 mt-10">
-            <button type="button" onClick={closeModal} className="flex-1 py-4 bg-gray-50 rounded-2xl font-black text-xs hover:bg-gray-100 transition-colors">CANCEL</button>
-            <button type="submit" className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all hover:bg-gray-800">{editingId ? 'SAVE CHANGES' : 'CREATE ARCHIVE'}</button>
+            <button type="button" onClick={closeModal} className="flex-1 py-4 bg-[#EEF1F0] text-[var(--color-ink)] rounded-xl font-black text-xs hover:bg-[#E1E7E4] transition-colors">CANCEL</button>
+            <button type="submit" className="flex-1 py-4 bg-[var(--color-primary)] text-white rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all hover:bg-[var(--color-primary-strong)]">{editingId ? 'SAVE CHANGES' : 'CREATE ARCHIVE'}</button>
           </div>
         </form>
       </Modal>

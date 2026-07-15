@@ -26,12 +26,12 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
       >
         <div className="p-8 pb-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-black text-black tracking-tighter">TRAVEL</h2>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400">
+            <h2 className="text-xl font-black tracking-tighter" style={{ color: 'var(--color-ink)' }}>TRAVEL</h2>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-[var(--color-bg-page)] transition-colors" style={{ color: 'var(--color-ink-muted)' }}>
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.3em]">Navigation System</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.3em]" style={{ color: 'var(--color-ink-muted)', opacity: 0.6 }}>Navigation System</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
@@ -60,8 +60,8 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
         </div>
 
         <div className="p-6 pt-3 border-t border-gray-100">
-          <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest">Trip Record App</p>
-          <p className="text-[8px] text-gray-200 font-mono mt-1">v0.3.0 — Groups + Journal</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>Trip Record App</p>
+          <p className="text-[8px] font-mono mt-1" style={{ color: 'var(--color-ink-muted)', opacity: 0.45 }}>v0.4.0 — Lagoon Teal</p>
         </div>
       </div>
     </>
@@ -69,22 +69,16 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
 }
 
 // ===== Nav Link subcomponent =====
-function NavLink({ href, onClick, icon, label, sub, active, color }: {
+function NavLink({ href, onClick, icon, label, sub, active }: {
   href: string; onClick: () => void; icon: React.ReactNode; label: string; sub: string;
   active: boolean; color?: string;
 }) {
-  const bgMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-    violet: 'bg-violet-50 text-violet-600',
-  };
-  const activeClass = color ? bgMap[color] || 'bg-gray-900 text-white' : 'bg-gray-900 text-white';
-
   return (
     <Link href={href} onClick={onClick}
       className={`flex items-center gap-3 py-3.5 px-4 rounded-2xl transition-all duration-300 group ${
-        active ? `${activeClass} shadow-sm` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+        active
+          ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] shadow-sm'
+          : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-bg-page)] hover:text-[var(--color-ink)]'
       }`}
     >
       <span className="flex-shrink-0 group-hover:scale-110 transition-transform">{icon}</span>

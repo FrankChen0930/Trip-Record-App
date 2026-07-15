@@ -21,7 +21,7 @@ export function AuthStatus({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         href="/login"
         onClick={onNavigate}
-        className="flex items-center gap-3 py-3 px-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+        className="flex items-center gap-3 py-3 px-4 rounded-2xl text-[var(--color-ink-muted)] hover:bg-[var(--color-bg-page)] hover:text-[var(--color-ink)] transition-all"
       >
         <LogIn className="w-5 h-5 flex-shrink-0" />
         <div>
@@ -47,11 +47,11 @@ export function AuthStatus({ onNavigate }: { onNavigate?: () => void }) {
   };
 
   return (
-    <div className="flex items-center gap-3 py-3 px-4 rounded-2xl bg-gray-50">
-      <UserCircle className="w-5 h-5 flex-shrink-0 text-emerald-600" />
+    <div className="flex items-center gap-3 py-3 px-4 rounded-2xl bg-[var(--color-bg-page)]">
+      <UserCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-primary)' }} />
       <div className="flex-1 min-w-0">
-        <span className="text-sm font-bold block text-gray-900 truncate">{displayName}</span>
-        <span className="text-[9px] text-gray-400 font-medium block truncate">{session.user.email}</span>
+        <span className="text-sm font-bold block truncate" style={{ color: 'var(--color-ink)' }}>{displayName}</span>
+        <span className="text-[9px] font-medium block truncate" style={{ color: 'var(--color-ink-muted)' }}>{session.user.email}</span>
       </div>
       <button
         onClick={handleSignOut}

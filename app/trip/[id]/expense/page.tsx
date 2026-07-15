@@ -176,14 +176,14 @@ export default function TripExpensePage() {
     return cat;
   }, [expenses]);
 
-  const pieColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+  const pieColors = ['#1D9E75', '#5DCAA5', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
   // 視覺參數
   const headerHeight = 280;
   const opacity = Math.max(0, 1 - scrollY / headerHeight);
 
   return (
-    <div className="bg-gray-50 min-h-screen text-black relative">
+    <div className="min-h-screen relative" style={{ background: 'var(--color-bg-page)', color: 'var(--color-ink)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="expense" />
 
       {/* 沉浸式封面背景 */}
@@ -193,7 +193,7 @@ export default function TripExpensePage() {
           className="w-full h-full object-cover"
           style={{ opacity, transform: `scale(${1 + scrollY * 0.001})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-black/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#F2FAF7] via-transparent to-black/50" />
         <div className="absolute bottom-16 left-6 text-white" style={{ opacity }}>
           <h1 className="text-3xl font-black drop-shadow-lg tracking-tight">{tripInfo?.name}</h1>
           <p className="text-[10px] font-bold opacity-60 uppercase tracking-[0.2em] mt-1">Settlement Archive / 帳目檔案</p>
@@ -202,36 +202,36 @@ export default function TripExpensePage() {
 
       {/* 頂部導航 */}
       <div className={`p-4 flex items-center sticky top-0 z-50 transition-all duration-300 ${scrollY > 100 ? 'bg-white/90 backdrop-blur-lg shadow-sm' : 'bg-transparent'}`}>
-        <button onClick={() => setSidebarOpen(true)} className={`p-2.5 rounded-xl transition-all ${scrollY > 100 ? 'text-black hover:bg-gray-100' : 'text-white glass-dark'}`}>
+        <button onClick={() => setSidebarOpen(true)} className={`p-2.5 rounded-xl transition-all ${scrollY > 100 ? 'text-[var(--color-ink)] hover:bg-[var(--color-primary-soft)]' : 'text-white glass-dark'}`}>
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className={`ml-4 font-bold text-sm transition-all ${scrollY > 100 ? 'opacity-100 text-emerald-600' : 'opacity-0'}`}>
+        <h1 className={`ml-4 font-bold text-sm transition-all ${scrollY > 100 ? 'opacity-100 text-[var(--color-primary-strong)]' : 'opacity-0'}`}>
           {tripInfo?.name} - 支出結算
         </h1>
       </div>
 
       {/* 內容區塊 */}
       <div className="relative z-10" style={{ marginTop: `${headerHeight - 40}px` }}>
-        <div className="bg-gray-50 rounded-t-[3rem] p-6 min-h-screen">
+        <div className="rounded-t-[3rem] p-6 min-h-screen" style={{ background: 'var(--color-bg-page)' }}>
 
           {/* 總額統計卡片 */}
-          <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-6 rounded-[2rem] shadow-lg mb-6 text-white">
-            <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-1">Total Expenses</p>
+          <div className="bg-gradient-to-br from-[#1D9E75] to-[#0F6E56] p-6 rounded-xl shadow-lg mb-6 text-white">
+            <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Total Expenses</p>
             <p className="text-4xl font-black font-mono">${totalExpenses.toFixed(0)}</p>
-            <p className="text-[10px] text-emerald-200 mt-2">{expenses.length} 筆紀錄 · {members.length} 位成員</p>
+            <p className="text-[10px] text-white/70 mt-2">{expenses.length} 筆紀錄 · {members.length} 位成員</p>
           </div>
 
           {/* 成員墊付比例 (簡單圓形圖示) */}
           {Object.keys(categoryMap).length > 0 && (
-            <div className="bg-white p-5 rounded-[2rem] shadow-sm mb-6 border border-gray-100">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">墊付比例</h3>
+            <div className="bg-white p-5 rounded-xl shadow-sm mb-6 border border-[var(--color-border-hairline)]">
+              <h3 className="text-[10px] font-bold text-[var(--color-ink-muted)] uppercase tracking-widest mb-4">墊付比例</h3>
               <div className="flex gap-3 flex-wrap">
                 {Object.entries(categoryMap).map(([name, amount], i) => (
-                  <div key={name} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl">
+                  <div key={name} className="flex items-center gap-2 bg-[var(--color-bg-page)] px-3 py-2 rounded-xl">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: pieColors[i % pieColors.length] }} />
                     <span className="text-xs font-bold">{name}</span>
-                    <span className="text-xs text-gray-400 font-mono">${(amount as number).toFixed(0)}</span>
-                    <span className="text-[9px] text-gray-300">({((amount as number) / totalExpenses * 100).toFixed(0)}%)</span>
+                    <span className="text-xs text-[var(--color-ink-muted)] font-mono">${(amount as number).toFixed(0)}</span>
+                    <span className="text-[9px] text-[#C4CFC9]">({((amount as number) / totalExpenses * 100).toFixed(0)}%)</span>
                   </div>
                 ))}
               </div>
@@ -252,45 +252,45 @@ export default function TripExpensePage() {
           )}
 
           {/* 結清建議卡片 */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm mb-6 border border-emerald-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-[#9BDCC4]">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest px-2 py-1 bg-emerald-50 rounded-lg">最佳結清路徑</h2>
-              <span className="text-[9px] text-gray-300 font-mono">ALGORITHM V3.1</span>
+              <h2 className="text-[10px] font-bold text-[var(--color-primary-strong)] uppercase tracking-widest px-2 py-1 bg-[var(--color-primary-soft)] rounded-lg">最佳結清路徑</h2>
+              <span className="text-[9px] text-[#C4CFC9] font-mono">ALGORITHM V3.1</span>
             </div>
 
             {transactions.length > 0 ? (
               <div className="space-y-3">
                 {transactions.map((t, i) => (
-                  <div key={i} className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100 card-hover">
+                  <div key={i} className="flex justify-between items-center bg-[var(--color-bg-page)] p-4 rounded-2xl border border-[var(--color-border-hairline)] card-hover">
                     <div className="flex flex-col">
-                      <span className="text-[9px] text-gray-400 font-bold uppercase">Debtor</span>
+                      <span className="text-[9px] text-[var(--color-ink-muted)] font-bold uppercase">Debtor</span>
                       <span className="font-bold text-red-500">{t.from}</span>
                     </div>
                     <div className="flex flex-col items-center px-4 flex-1">
-                      <span className="text-gray-200 text-xl">→</span>
-                      <span className="font-mono font-bold text-emerald-700 text-lg">${t.amt.toFixed(0)}</span>
+                      <span className="text-[#C4CFC9] text-xl">→</span>
+                      <span className="font-mono font-bold text-[var(--color-primary-strong)] text-lg">${t.amt.toFixed(0)}</span>
                     </div>
                     <div className="flex flex-col items-end mr-4">
-                      <span className="text-[9px] text-gray-400 font-bold uppercase text-right">Creditor</span>
-                      <span className="font-bold text-blue-600">{t.to}</span>
+                      <span className="text-[9px] text-[var(--color-ink-muted)] font-bold uppercase text-right">Creditor</span>
+                      <span className="font-bold text-[var(--color-primary-strong)]">{t.to}</span>
                     </div>
-                    <button onClick={() => handleSettleDebt(t.from, t.to, t.amt)} className="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold text-[10px] rounded-xl transition-colors whitespace-nowrap">清帳</button>
+                    <button onClick={() => handleSettleDebt(t.from, t.to, t.amt)} className="px-3 py-2 bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] hover:bg-[#B9E7D6] font-bold text-[10px] rounded-xl transition-colors whitespace-nowrap">清帳</button>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8">
-                <Receipt className="w-8 h-8 text-emerald-300 mx-auto mb-2 opacity-50" />
-                <p className="text-gray-400 italic text-sm font-medium">目前帳目已平清</p>
+                <Receipt className="w-8 h-8 text-[#9BDCC4] mx-auto mb-2 opacity-70" />
+                <p className="text-[var(--color-ink-muted)] italic text-sm font-medium">目前帳目已平清</p>
               </div>
             )}
           </div>
 
           {/* 成員個人紀錄 (Member Ledger) */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm mb-6 border border-gray-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-[var(--color-border-hairline)]">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2 py-1 bg-gray-50 rounded-lg">個人花費紀錄</h2>
-              <select value={selectedLedgerMember} onChange={e => setSelectedLedgerMember(e.target.value)} className="bg-gray-50 border-none rounded-xl px-3 py-1 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-100 transition-colors">
+              <h2 className="text-[10px] font-bold text-[var(--color-ink-muted)] uppercase tracking-widest px-2 py-1 bg-[var(--color-bg-page)] rounded-lg">個人花費紀錄</h2>
+              <select value={selectedLedgerMember} onChange={e => setSelectedLedgerMember(e.target.value)} className="bg-[var(--color-bg-page)] border-none rounded-xl px-3 py-1 text-sm font-bold text-[var(--color-ink)] outline-none cursor-pointer hover:bg-[var(--color-primary-soft)] transition-colors">
                 <option value="">選擇成員...</option>
                 {members.map(m => (
                   <option key={m.id} value={m.nickname}>{m.nickname}</option>
@@ -313,9 +313,9 @@ export default function TripExpensePage() {
               return (
                 <div className="space-y-4">
                   <div className="flex gap-4 mb-4">
-                    <div className="flex-1 bg-blue-50 p-3 rounded-xl flex flex-col items-center">
-                       <span className="text-[10px] font-bold text-blue-400">總墊付</span>
-                       <span className="font-mono font-black text-blue-600 text-lg">${totalPaid.toFixed(0)}</span>
+                    <div className="flex-1 bg-[var(--color-primary-soft)] p-3 rounded-xl flex flex-col items-center">
+                       <span className="text-[10px] font-bold text-[var(--color-primary)]">總墊付</span>
+                       <span className="font-mono font-black text-[var(--color-primary-strong)] text-lg">${totalPaid.toFixed(0)}</span>
                     </div>
                     <div className="flex-1 bg-red-50 p-3 rounded-xl flex flex-col items-center">
                        <span className="text-[10px] font-bold text-red-400">總分攤 (應付)</span>
@@ -333,62 +333,62 @@ export default function TripExpensePage() {
                        const iPaid = exp.payer === selectedLedgerMember;
                        
                        return (
-                         <div key={exp.id} className="flex justify-between items-center text-sm p-3 bg-gray-50/50 rounded-xl border border-transparent hover:border-gray-100 transition-colors">
+                         <div key={exp.id} className="flex justify-between items-center text-sm p-3 bg-[var(--color-bg-page)] rounded-xl border border-transparent hover:border-[#D8EBE3] transition-colors">
                            <div className="flex flex-col">
-                             <span className="font-bold text-gray-800 text-xs">{exp.item_name}</span>
-                             <span className="text-[9px] text-gray-400 font-bold">{new Date(exp.created_at).toLocaleDateString()}</span>
+                             <span className="font-bold text-[var(--color-ink)] text-xs">{exp.item_name}</span>
+                             <span className="text-[9px] text-[var(--color-ink-muted)] font-bold">{new Date(exp.created_at).toLocaleDateString()}</span>
                            </div>
                            <div className="flex items-center gap-4 text-right">
                              {myShare > 0 && <div className="flex flex-col items-end"><span className="text-[9px] text-red-300 font-black tracking-widest uppercase mb-0.5">被分攤</span><span className="font-mono text-red-500 font-black leading-none">${myShare.toFixed(0)}</span></div>}
-                             {iPaid && <div className="flex flex-col items-end"><span className="text-[9px] text-blue-300 font-black tracking-widest uppercase mb-0.5">代墊</span><span className="font-mono text-blue-600 font-black leading-none">${Number(exp.amount).toFixed(0)}</span></div>}
+                             {iPaid && <div className="flex flex-col items-end"><span className="text-[9px] text-[var(--color-primary)] font-black tracking-widest uppercase mb-0.5">代墊</span><span className="font-mono text-[var(--color-primary-strong)] font-black leading-none">${Number(exp.amount).toFixed(0)}</span></div>}
                            </div>
                          </div>
                        );
                     })}
-                    {memberTxs.length === 0 && <p className="text-center text-xs text-gray-400 py-4 font-bold">目前沒有相關花費紀錄</p>}
+                    {memberTxs.length === 0 && <p className="text-center text-xs text-[var(--color-ink-muted)] py-4 font-bold">目前沒有相關花費紀錄</p>}
                   </div>
                 </div>
               );
             })() : (
-              <div className="text-center py-6 text-xs text-gray-400 font-bold bg-gray-50 rounded-xl border border-dashed border-gray-200">請選擇上方選單以查看個人帳本明細</div>
+              <div className="text-center py-6 text-xs text-[var(--color-ink-muted)] font-bold bg-[var(--color-bg-page)] rounded-xl border border-dashed border-[#C4DED3]">請選擇上方選單以查看個人帳本明細</div>
             )}
           </div>
 
           {/* 支出歷史清單 */}
           <div className="space-y-3 pb-24">
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1 mb-2">支出明細 (RECENT ACTIVITY)</h3>
+            <h3 className="text-[10px] font-bold text-[var(--color-ink-muted)] uppercase tracking-widest px-1 mb-2">支出明細 (RECENT ACTIVITY)</h3>
             {loading ? <ExpenseSkeleton /> :
               expenses.length === 0 ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon"><Receipt className="w-12 h-12 text-gray-400" /></div>
-                  <h3 className="text-lg font-bold text-gray-300 mb-2">還沒有支出紀錄</h3>
-                  <p className="text-sm text-gray-300">點擊右下角的 {<DollarSign className="inline w-4 h-4" />} 按鈕開始記帳！</p>
+                  <div className="empty-state-icon"><Receipt className="w-12 h-12 text-[var(--color-ink-muted)]" /></div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>還沒有支出紀錄</h3>
+                  <p className="text-sm" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>點擊右下角的 {<DollarSign className="inline w-4 h-4" />} 按鈕開始記帳！</p>
                 </div>
               ) :
               expenses.map(exp => (
-                <div key={exp.id} className={`p-5 rounded-[1.5rem] shadow-sm flex justify-between items-center border border-transparent transition-all card-hover group ${exp.is_transfer ? 'bg-emerald-50/50 hover:border-emerald-200' : 'bg-white hover:border-blue-200'}`}>
+                <div key={exp.id} className={`p-5 rounded-xl shadow-sm flex justify-between items-center border border-transparent transition-all card-hover group ${exp.is_transfer ? 'bg-[var(--color-primary-soft)]/40 hover:border-[#9BDCC4]' : 'bg-white hover:border-[#9BDCC4]'}`}>
                   <div>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter mb-2 inline-block ${exp.is_transfer ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-50 text-blue-500'}`}>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter mb-2 inline-block ${exp.is_transfer ? 'bg-[#CDEEE2] text-[var(--color-primary-strong)]' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)]'}`}>
                       {exp.payer} {exp.is_transfer ? '還款' : '墊付'}
                     </span>
-                    <h4 className="font-bold text-gray-800 text-lg leading-none mb-1">{exp.item_name}</h4>
+                    <h4 className="font-bold text-[var(--color-ink)] text-lg leading-none mb-1">{exp.item_name}</h4>
                     {exp.is_transfer ? (
-                       <p className="text-[10px] text-emerald-500 font-medium">還給：{exp.participants.join(', ')}</p>
+                       <p className="text-[10px] text-[var(--color-primary)] font-medium">還給：{exp.participants.join(', ')}</p>
                     ) : (
-                       <p className="text-[10px] text-gray-400 font-medium">參與：{exp.participants.join(', ')}</p>
+                       <p className="text-[10px] text-[var(--color-ink-muted)] font-medium">參與：{exp.participants.join(', ')}</p>
                     )}
                     {exp.split_type === 'custom' && !exp.is_transfer && <p className="text-[9px] text-orange-500 font-bold mt-0.5">自訂分攤</p>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-xl text-blue-600 mr-2">${typeof exp.amount === 'number' ? exp.amount.toFixed(0) : parseFloat(String(exp.amount)).toFixed(0)}</span>
+                    <span className="font-mono font-bold text-xl text-[var(--color-ink)] mr-2">${typeof exp.amount === 'number' ? exp.amount.toFixed(0) : parseFloat(String(exp.amount)).toFixed(0)}</span>
                     <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEditClick(exp)} className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-100 transition-all" title="編輯">
+                      <button onClick={() => handleEditClick(exp)} className="p-1.5 bg-[var(--color-bg-page)] rounded-lg text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all" title="編輯">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleCopyClick(exp)} className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-emerald-500 hover:bg-emerald-100 transition-all" title="複製">
+                      <button onClick={() => handleCopyClick(exp)} className="p-1.5 bg-[var(--color-bg-page)] rounded-lg text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all" title="複製">
                         <Copy className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(exp.id)} className="p-1.5 bg-gray-50 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-100 transition-all" title="刪除">
+                      <button onClick={() => handleDelete(exp.id)} className="p-1.5 bg-[var(--color-bg-page)] rounded-lg text-[var(--color-ink-muted)] hover:text-red-500 hover:bg-red-50 transition-all" title="刪除">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -411,7 +411,7 @@ export default function TripExpensePage() {
           }
           setFormOpen(true);
         }}
-        className="fab-button bg-emerald-500 text-white hover:shadow-[0_8px_40px_rgba(16,185,129,0.35)] flex items-center justify-center"
+        className="fab-button bg-[var(--color-primary)] text-white hover:shadow-[0_8px_40px_rgba(15,110,86,0.45)] flex items-center justify-center"
       >
         <DollarSign className="w-8 h-8" />
       </button>
@@ -421,25 +421,25 @@ export default function TripExpensePage() {
         <form onSubmit={handleAddExpense}>
           <div className="space-y-5">
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1">項目內容</label>
-              <input placeholder="例如：晚餐、油錢" value={item} onChange={e => setItem(e.target.value)} className="w-full border-none p-4 rounded-2xl bg-gray-50 mt-1 outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+              <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1">項目內容</label>
+              <input placeholder="例如：晚餐、油錢" value={item} onChange={e => setItem(e.target.value)} className="w-full border-none p-4 rounded-xl bg-[var(--color-bg-page)] mt-1 outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all" />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1">金額 (TWD)</label>
-              <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-full border-none p-4 rounded-2xl bg-gray-50 mt-1 outline-none font-mono text-lg focus:ring-2 focus:ring-emerald-500 transition-all" />
+              <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1">金額 (TWD)</label>
+              <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-full border-none p-4 rounded-xl bg-[var(--color-bg-page)] mt-1 outline-none font-mono text-lg focus:ring-2 focus:ring-[var(--color-primary)] transition-all" />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold uppercase ml-1">代墊成員</label>
-              <select value={payer} onChange={e => setPayer(e.target.value)} className="w-full border-none p-4 rounded-2xl bg-gray-50 mt-1 outline-none appearance-none font-bold">
+              <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1">代墊成員</label>
+              <select value={payer} onChange={e => setPayer(e.target.value)} className="w-full border-none p-4 rounded-xl bg-[var(--color-bg-page)] mt-1 outline-none appearance-none font-bold">
                 {members.map(m => <option key={m.id} value={m.nickname}>{m.nickname}</option>)}
               </select>
             </div>
             <div>
               <div className="flex justify-between items-end mb-2">
-                <label className="text-[10px] text-gray-400 font-bold uppercase ml-1">分攤對象</label>
-                <div className="flex bg-gray-100 rounded-lg p-0.5">
-                  <button type="button" onClick={() => setSplitType('equal')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${splitType === 'equal' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'}`}>均分</button>
-                  <button type="button" onClick={() => setSplitType('custom')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${splitType === 'custom' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'}`}>自訂</button>
+                <label className="text-[10px] text-[var(--color-ink-muted)] font-bold uppercase ml-1">分攤對象</label>
+                <div className="flex bg-[#EEF1F0] rounded-lg p-0.5">
+                  <button type="button" onClick={() => setSplitType('equal')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${splitType === 'equal' ? 'bg-white shadow-sm text-[var(--color-ink)]' : 'text-[var(--color-ink-muted)]'}`}>均分</button>
+                  <button type="button" onClick={() => setSplitType('custom')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${splitType === 'custom' ? 'bg-white shadow-sm text-[var(--color-ink)]' : 'text-[var(--color-ink-muted)]'}`}>自訂</button>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -453,7 +453,7 @@ export default function TripExpensePage() {
                             setSelectedFriends([...selectedFriends, m.nickname]);
                         }
                     }}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedFriends.includes(m.nickname) ? 'bg-blue-600 text-white shadow-md scale-105' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedFriends.includes(m.nickname) ? 'bg-[var(--color-primary)] text-white shadow-md scale-105' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)] hover:bg-[#E1E7E4]'}`}
                   >
                     {m.nickname}
                   </button>
@@ -467,7 +467,7 @@ export default function TripExpensePage() {
                   <div className="space-y-2">
                     {selectedFriends.map(friend => (
                       <div key={friend} className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-bold text-gray-700 w-20">{friend}</span>
+                        <span className="text-sm font-bold text-[var(--color-ink)] w-20">{friend}</span>
                         <input
                           type="number" placeholder="0"
                           value={splitDetails[friend] || ''}
@@ -479,7 +479,7 @@ export default function TripExpensePage() {
                   </div>
                   <div className="mt-3 pt-3 border-t border-orange-200/50 flex justify-between items-center text-xs font-bold">
                     <span className="text-orange-800">目前總分攤：</span>
-                    <span className={`${Math.abs(selectedFriends.reduce((acc, f) => acc + parseFloat(splitDetails[f] || '0'), 0) - (parseFloat(amount) || 0)) < 1 ? 'text-emerald-600' : 'text-red-500'} font-mono text-sm`}>
+                    <span className={`${Math.abs(selectedFriends.reduce((acc, f) => acc + parseFloat(splitDetails[f] || '0'), 0) - (parseFloat(amount) || 0)) < 1 ? 'text-[var(--color-primary-strong)]' : 'text-red-500'} font-mono text-sm`}>
                       ${selectedFriends.reduce((acc, f) => acc + parseFloat(splitDetails[f] || '0'), 0).toFixed(0)} / ${amount || 0}
                     </span>
                   </div>
@@ -488,8 +488,8 @@ export default function TripExpensePage() {
             </div>
           </div>
           <div className="flex gap-3 mt-10">
-            <button type="button" onClick={() => setFormOpen(false)} className="flex-1 py-4 bg-gray-50 rounded-2xl font-bold hover:bg-gray-100 transition-colors">取消</button>
-            <button type="submit" className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all hover:bg-emerald-700">儲存</button>
+            <button type="button" onClick={() => setFormOpen(false)} className="flex-1 py-4 bg-[#EEF1F0] text-[var(--color-ink)] rounded-xl font-bold hover:bg-[#E1E7E4] transition-colors">取消</button>
+            <button type="submit" className="flex-1 py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all hover:bg-[var(--color-primary-strong)]">儲存</button>
           </div>
         </form>
       </Modal>
