@@ -23,6 +23,8 @@
 | item_type | text | 類別 (activity: 一般行程, ticket: 交通票券) |
 | note | text | 備註或席位資訊 |
 | map_url | text | Google Maps 連結 |
+| lat / lng | float8 | 地圖座標（P5a，內建地圖用；可為空） |
+| place_id | text | Google Places ID（P5b；可為空） |
 
 3. trip_photos (影像紀錄)
 儲存上傳到 Storage 的照片索引。
@@ -77,6 +79,10 @@
 | price | numeric | 金額（可選） |
 | link | text | 相關連結（可選） |
 | note | text | 備註（可選） |
+| lat / lng | float8 | 地圖座標（P5，從地圖/建議加入或補定位時寫入） |
+| place_id | text | Google Places ID |
+| address | text | 地址（Places 回傳快取） |
+| rating | numeric | Google 評分（快取） |
 | created_at | timestamptz | 建立時間 |
 
 7. groups (身分組) ✨ NEW
@@ -97,6 +103,22 @@
 | group_id | uuid | 關聯到 groups.id |
 | member_id | uuid | 關聯到 trip_members.id |
 | UNIQUE | | (group_id, member_id) |
+
+10. wish_places (探索清單) ✨ NEW (2026-07-16)
+旅程之外的「想去 / 值得再去」口袋名單（/places 頁）。建表 SQL 見 `supabase/migrations/p7_wish_places.sql`。
+| 欄位名 | 型別 | 說明 |
+| :--- | :--- | :--- |
+| id | uuid | 主鍵 |
+| title | text | 地點名稱 |
+| place_id / lat / lng / address / rating | – | Google 定位資訊（同 trip_bucket_list，皆可空） |
+| found_by | uuid | 誰發現的（trip_members.id，可空） |
+| source_type | text | 'instagram' / 'youtube' / 'friend' / 'visited' / 'other' |
+| source_url | text | 來源連結（IG 短片等） |
+| note | text | 備註 |
+| expires_at | date | 限時活動截止日（過期前端自動標「已結束」） |
+| business_status | text | Google businessStatus（OPERATIONAL / CLOSED_* / NOT_FOUND） |
+| status_checked_at | timestamptz | 上次存活檢查時間（>30 天自動補查） |
+| created_at | timestamptz | 建立時間 |
 
 9. trip_journals (每日日記) ✨ NEW
 每趟旅程每天一篇日記。

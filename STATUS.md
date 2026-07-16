@@ -1,6 +1,7 @@
 # STATUS — Travel Record App 重構進度與交接
 
-> 最後更新：2026-07-16（P5a+P5b 程式完成：地圖、地圖找點、建議景點、交通時間；差使用者跑 migration + Vercel env，見 P5 段落）
+> 最後更新：2026-07-17（**P5 地圖階段全部收尾**：P5a/b/d/e + 探索清單 + 分享入口已上線
+> `2edcb7c`，migrations 已跑、部署驗證 200。剩 IG 分享待使用者實測。下一階段候選見文末「下一步」。）
 > 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
 > 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
 
@@ -10,7 +11,8 @@
 
 環島旅行記錄 Web App（`my-trip-app`）。正在做「前端 + 架構重構 + 功能擴充」。
 技術棧：Next.js 16 (App Router, 全 client component) · React 19 · TypeScript · Tailwind 4 ·
-Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · dnd-kit · leaflet(已安裝待用) · xlsx。
+Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · dnd-kit ·
+leaflet/react-leaflet(P5 地圖) · Google Places API(伺服器代理) · OSRM(交通時間) · xlsx。
 
 ---
 
@@ -24,9 +26,12 @@ Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · 
 | P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ **擱置中**：使用者這幾天陸續讓成員登入綁定，到齊後再做（SQL 已備好） |
 | P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | ✅ 完成（2026-07-16；543 檔上線，Drive 原檔留作備份待使用者確認後自行處理） |
 | P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面 | ✅ 完成（2026-07-15；photos 頁除外，留給 P3 重寫時套） |
-| P5a | 內建地圖（Leaflet） | ✅ 程式完成（2026-07-16；**待使用者跑 migration**，見 P5 段落） |
-| P5b | 建議景點 + 交通時間（Google Places + OSRM） | ✅ 完成（2026-07-16；金鑰已申請、migration 與 Vercel env 使用者已完成） |
-| P5d | 規劃頁互動打磨：雙向拖曳、卡片編輯/刪除、地圖提示（對標 Funliday/去趣） | ✅ 程式完成（2026-07-16，待使用者試用回饋） |
+| P5a | 內建地圖（Leaflet + CARTO tile） | ✅ 完成（2026-07-16；migration 已跑、已上線） |
+| P5b | 建議景點 + 交通時間（Google Places + OSRM） | ✅ 完成（2026-07-16；金鑰/env 就緒、端到端實測通過） |
+| P5d | 規劃頁互動打磨：雙向拖曳、卡片編輯/刪除、地圖提示（對標 Funliday/去趣） | ✅ 完成（2026-07-16，使用者已試用） |
+| P5e | Plan 頁改版：常駐地圖 2/3 + 視窗化行程表 + inline 搜尋/探索/定位 | ✅ 完成（2026-07-16，含 z-index/h-dvh 回饋修正） |
+| — | 探索清單 wish_places（/places 頁、來源/發現者/限時/存活檢查、Plan 匯入） | ✅ 完成（2026-07-16；p7 migration 已跑、部署 200） |
+| — | 分享入口（PWA share target + /places 預填） | ✅ 程式完成（2026-07-16；**IG 實測待使用者**，iOS 需捷徑） |
 | P5c | AI 行程建議 | ⬜ 未開始（最後、可選） |
 | P6 | 成員管理與權限：email 邀請成員、身分組分級控制權限（2026-07-15 使用者新需求） | ⬜ 未開始，**依賴 P2b**（權限強制力靠 RLS） |
 
@@ -171,7 +176,7 @@ features/<name>/
   多為 SpreadsheetImport 的 no-explicit-any 與 set-state-in-effect 舊警告，可日後專門清）。
 - photos 頁未動（P3 重寫時直接用新設計）。深色模式未做（可後補）。
 
-### P5a 地圖 / P5b 建議景點 — ✅ 程式完成（2026-07-16），等兩個使用者步驟
+### P5a 地圖 / P5b 建議景點 — ✅ 完成（2026-07-16）
 
 **使用者已完成（2026-07-16）**：migration 已跑、Vercel 已加 `GOOGLE_PLACES_API_KEY`、
 台南備選池 21 筆已補定位、當日地圖已看到。
@@ -187,7 +192,7 @@ features/<name>/
 **程式落點**：
 - `features/map/`：`TripMap.tsx`（Leaflet 封裝，頁面用 next/dynamic ssr:false 載入）、
   `DayRouteMap.tsx`（trip 主頁當日路線卡，無座標點時整卡隱藏）、
-  `MapPickerModal.tsx`（plan 頁全螢幕地圖：搜尋、探索附近〔景點/美食/咖啡〕、加入備選池、補定位模式）、
+  ~~`MapPickerModal.tsx`~~（P5b 時的全螢幕地圖，**P5e 已刪除**，功能併入 `PlanMapPanel.tsx`）、
   `hooks/useOsrmRoute.ts`（useDayTravelTimes：相鄰定位點交通時間，回 `{目的地行程id: leg}`）。
 - `features/suggestions/`：`api.ts`（打自家代理）、hooks（usePlaceSearch/useNearby，都是「送出才查」）、
   `PlaceCard.tsx`、`PlaceLocateField.tsx`（trip 主頁行程表單內的定位欄）。
@@ -223,9 +228,7 @@ features/<name>/
   Leaflet 內部 z-index 400–1000 會蓋過側欄 z-200，isolate 把它關進自己的 stacking context；
   (2) plan 頁根元素 `min-h-screen`→`h-dvh` 鎖視窗高度，行程表/備選池只在面板內捲、地圖不動。
 
-### 探索清單 MVP — ✅ 程式完成（2026-07-16），**待使用者跑 migration**
-- **【使用者手動】Supabase SQL Editor 跑 `supabase/migrations/p7_wish_places.sql`**（建 `wish_places` 表，
-  可重跑）。沒跑之前 /places 頁會讀取失敗。
+### 探索清單 MVP — ✅ 完成（2026-07-16；p7 migration 已跑，anon REST 查 `wish_places` 回 200）
 - 結構：`features/wishlist/`（api + useWishPlaces/wishStatus + mutations + useStaleStatusCheck）、
   `app/places/page.tsx`（地圖＋篩選＋卡片牆＋新增/編輯 Modal）、Sidebar 入口「探索清單」、
   Plan 頁備選池 Compass 鈕＝「從探索清單匯入」（place_id 去重、已結束/歇業降透明度仍可加）。
@@ -235,7 +238,7 @@ features/<name>/
   進頁自動補查「>30 天未檢查」前 5 筆＋卡片手動重查鈕；Google 查無此點回 `NOT_FOUND` 視同歇業。
 - 驗證：typecheck ✅ / build ✅（/places、/api/places/details 已註冊）/ lint 新程式碼 0 問題。
 
-### 分享入口 — ✅ 程式完成（2026-07-16）
+### 分享入口 — ✅ 程式完成（2026-07-16）；**IG 端實測待使用者**（說要之後再測）
 - `public/manifest.json` 加 `share_target`（GET → /places，params 對應 shared_title/text/url）。
 - /places 頁掛載時讀 `?shared_*` 參數 → 自動開新增表單並預填（從 text 抽 URL、
   依網域自動選 IG/YT 來源、replaceState 清參數防重複觸發）。
@@ -243,6 +246,15 @@ features/<name>/
   之後 IG 分享選單就會出現本 App。**iOS**：Safari 不支援 share target，
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
+
+### 🏁 P5 階段收尾（2026-07-17）
+- 全部上線：commit `2edcb7c`（28 檔、+2122 行）push → Vercel 自動部署，`/places` 部署驗證 200。
+- migrations 皆已執行（p5_map_columns、p7_wish_places，REST 驗證過）；`GOOGLE_PLACES_API_KEY` 本機＋Vercel 就緒。
+- **唯一未驗收項**：IG 分享入口實測（使用者說之後再測；Android 要先把部署版「加入主畫面」安裝成 PWA，iOS 要建捷徑——教學可現寫）。
+- 下一階段候選（依使用者當時意願）：
+  1. 下一輪「方便性對標市面 App」打磨——使用者會收集實際使用的不順手清單再討論。
+  2. P2b 開 RLS（等成員全數登入綁定）→ 接 P6 成員管理與權限。
+  3. P5c AI 行程建議（最後、可選）。
 
 ### P5c AI 行程建議 — ⬜ 未開始（最後、可選）
 
