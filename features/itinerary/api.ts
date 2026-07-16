@@ -10,6 +10,9 @@ export interface ItineraryPayload {
   note: string;
   trip_id: string | undefined;
   map_url: string;
+  lat?: number | null;       // P5a: 地圖座標
+  lng?: number | null;
+  place_id?: string | null;
 }
 
 export interface TicketStatusInput {

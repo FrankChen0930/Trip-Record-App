@@ -21,6 +21,9 @@ export interface ItineraryItem {
   item_type: 'activity' | 'ticket';
   note: string | null;
   map_url: string | null;
+  lat?: number | null;       // P5a: 地圖座標
+  lng?: number | null;
+  place_id?: string | null;  // P5b: Google Places ID
   member_statuses?: MemberTicketStatus[];
 }
 
@@ -65,6 +68,11 @@ export interface BucketItem {
   price?: number;
   link?: string;
   note?: string;
+  lat?: number | null;       // P5a: 地圖座標
+  lng?: number | null;
+  place_id?: string | null;  // P5b: Google Places ID
+  address?: string | null;
+  rating?: number | null;
   created_at: string;
 }
 
@@ -113,6 +121,28 @@ export interface GroupMember {
   id: string;
   group_id: string;
   member_id: string;
+}
+
+// ===== 新增：探索清單（旅程之外的想去/再去口袋名單） =====
+
+export type WishSourceType = 'instagram' | 'youtube' | 'friend' | 'visited' | 'other';
+
+export interface WishPlace {
+  id: string;
+  title: string;
+  place_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  address: string | null;
+  rating: number | null;
+  found_by: string | null;        // trip_members.id
+  source_type: WishSourceType;
+  source_url: string | null;
+  note: string | null;
+  expires_at: string | null;      // 限時活動截止日
+  business_status: string | null; // OPERATIONAL / CLOSED_TEMPORARILY / CLOSED_PERMANENTLY / NOT_FOUND
+  status_checked_at: string | null;
+  created_at: string;
 }
 
 // ===== 新增：每日日記 =====

@@ -10,11 +10,19 @@ export const planApi = {
 
   insertItinerary: (row: Record<string, unknown>) =>
     supabase.from('trip_itinerary').insert([row]),
+  updateItinerary: (id: string, data: Record<string, unknown>) =>
+    supabase.from('trip_itinerary').update(data).eq('id', id),
   removeItinerary: (id: string) =>
     supabase.from('trip_itinerary').delete().eq('id', id),
 
-  addBucket: (row: { trip_id: string | undefined; category: string; title: string }) =>
+  addBucket: (row: {
+    trip_id: string | undefined; category: string; title: string;
+    note?: string | null; link?: string | null; price?: number | null;
+    lat?: number | null; lng?: number | null; place_id?: string | null; address?: string | null; rating?: number | null;
+  }) =>
     supabase.from('trip_bucket_list').insert([row]),
+  updateBucket: (id: string, data: Record<string, unknown>) =>
+    supabase.from('trip_bucket_list').update(data).eq('id', id),
   removeBucket: (id: string) =>
     supabase.from('trip_bucket_list').delete().eq('id', id),
 

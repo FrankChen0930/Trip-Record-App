@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, Tags, Users, Map, Book, DollarSign, Camera, LayoutDashboard, X, FileText } from 'lucide-react';
+import { Home, Tags, Users, Map, Book, DollarSign, Camera, LayoutDashboard, X, FileText, Compass } from 'lucide-react';
 import { AuthStatus } from '@/features/auth/components/AuthStatus';
 
 interface SidebarProps {
@@ -40,6 +40,7 @@ export default function Sidebar({ isOpen, onClose, currentPage }: SidebarProps) 
           <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
             <NavLink href="/groups" onClick={onClose} icon={<Tags className="w-5 h-5" />} label="身分組" sub="Groups" active={currentPage === 'groups'} color="blue" />
             <NavLink href="/members" onClick={onClose} icon={<Users className="w-5 h-5" />} label="成員名冊" sub="Members" active={currentPage === 'members'} color="violet" />
+            <NavLink href="/places" onClick={onClose} icon={<Compass className="w-5 h-5" />} label="探索清單" sub="Wish Places" active={currentPage === 'places'} color="teal" />
           </div>
 
           {tripId && (

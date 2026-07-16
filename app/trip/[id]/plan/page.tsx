@@ -8,33 +8,121 @@ import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay, Touc
 import type { ItineraryItem, BucketItem, TripAccommodation } from '@/lib/types';
 import { useTrip } from '@/features/trips/hooks/useTrip';
 import { usePlanData } from '@/features/plan/hooks/usePlanData';
-import { useAssignBucket, useInsertItinerary, useRemoveItinerary, useAddBucket, useSaveAccommodation } from '@/features/plan/hooks/usePlanMutations';
-import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown, Bed, Edit2, Link as LinkIcon } from 'lucide-react';
+import {
+  useAssignBucket, useInsertItinerary, useRemoveItinerary, useAddBucket, useSaveAccommodation,
+  useMoveItinerary, useUnassignItinerary, useUpdateItineraryItem, useUpdateBucketItem, useRemoveBucketItem,
+} from '@/features/plan/hooks/usePlanMutations';
+import { useConfirm } from '@/components/ConfirmDialog';
+import PlaceLocateField, { type PlaceCoord } from '@/features/suggestions/components/PlaceLocateField';
+import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown, Bed, Edit2, Link as LinkIcon, Crosshair, Star } from 'lucide-react';
+import type { WishPlace } from '@/lib/types';
+import { useWishPlaces, wishStatus } from '@/features/wishlist/hooks/useWishPlaces';
 import Modal from '@/components/Modal';
+import PlanMapPanel from '@/features/map/components/PlanMapPanel';
 
-// --- DND Draggable Item ---
-function DraggableBucketItem({ item }: { item: BucketItem }) {
+// --- DND Draggable Item（備選池卡：可拖、點擊編輯、定位/刪除鈕常駐） ---
+function DraggableBucketItem({ item, onLocate, onEdit, onDelete }: {
+  item: BucketItem;
+  onLocate: (item: BucketItem) => void;
+  onEdit: (item: BucketItem) => void;
+  onDelete: (item: BucketItem) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `bucket-${item.id}`,
     data: { type: 'BucketItem', item }
   });
+  const located = item.lat != null && item.lng != null;
 
   return (
     <div
       ref={setNodeRef} {...listeners} {...attributes}
+      onClick={() => onEdit(item)}
       className={`p-3 bg-white border border-[#E8F3EE] rounded-xl shadow-sm mb-2 flex items-start gap-2 ${isDragging ? 'opacity-50' : 'hover:shadow-md'} transition-all cursor-grab active:cursor-grabbing`}
     >
       <GripVertical className="w-4 h-4 text-[#C4CFC9] mt-1 flex-shrink-0" />
-      <div>
-        <h4 className="font-bold text-sm text-[var(--color-ink)]">{item.title}</h4>
+      <div className="flex-1 min-w-0">
+        <h4 className="font-bold text-sm text-[var(--color-ink)] flex items-center gap-1">
+          <span className="truncate">{item.title}</span>
+          {located && <MapPin className="w-3 h-3 text-[var(--color-primary)] flex-shrink-0" aria-label="已定位" />}
+          {item.rating != null && <span className="text-[9px] text-amber-600 font-black flex-shrink-0">★{item.rating}</span>}
+        </h4>
         {item.note && <p className="text-[10px] text-[var(--color-ink-muted)] mt-1 line-clamp-1">{item.note}</p>}
+      </div>
+      <div className="flex flex-col gap-0.5 flex-shrink-0">
+        {!located && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onLocate(item); }}
+            className="p-1.5 rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-strong)] transition-all"
+            title="用 Google 定位這個項目"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(item); }}
+          className="p-1.5 rounded-lg text-[#C4CFC9] hover:bg-red-50 hover:text-red-500 transition-all"
+          title="刪除"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );
 }
 
+// --- 行程格內的卡片（P5d：可拖到別格 / 拖回備選池、點擊編輯） ---
+function DraggableItineraryCard({ item, timeStr, onRemove, onEdit }: {
+  item: ItineraryItem;
+  timeStr: string;
+  onRemove: (id: string) => void;
+  onEdit: (item: ItineraryItem) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `itin-${item.id}`,
+    data: { type: 'ItineraryCard', item }
+  });
+
+  return (
+    <div
+      ref={setNodeRef} {...listeners} {...attributes}
+      onClick={() => onEdit(item)}
+      className={`bg-white p-2 rounded-lg shadow-sm border border-[#D8EBE3] relative hover:border-[#9BDCC4] transition-colors cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40' : ''}`}
+    >
+      <div className="flex justify-between items-start mb-1">
+        <span className="text-[9px] font-black font-mono text-white bg-[var(--color-ink)] px-1.5 py-0.5 rounded shadow-sm">
+          {item.start_time?.substring(0, 5) || timeStr}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
+          className="text-[#C4CFC9] hover:text-red-500 transition-all z-20"
+          title="刪除"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+      <h4 className="font-bold text-[11px] text-[var(--color-ink)] leading-tight flex items-center gap-1">
+        <span className="min-w-0">{item.location}</span>
+        {item.lat != null && item.lng != null && <MapPin className="w-2.5 h-2.5 text-[var(--color-primary)] flex-shrink-0" aria-label="已定位" />}
+      </h4>
+    </div>
+  );
+}
+
+// --- 備選池整欄是 drop zone（行程卡拖回來＝退回備選） ---
+function BucketPoolDropZone({ children }: { children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'bucket-pool' });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 overflow-y-auto p-3 custom-scrollbar transition-colors ${isOver ? 'bg-[var(--color-primary-soft)]/50 ring-2 ring-inset ring-[var(--color-primary)] rounded-lg' : ''}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 // --- Spreadsheet Grid Droppable Cell ---
-function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert }: { dayNum: number, timeStr: string, items: ItineraryItem[], onRemoveItem: (id: string) => void, onInsert: (day: number, time: string) => void }) {
+function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert, onEditItem }: { dayNum: number, timeStr: string, items: ItineraryItem[], onRemoveItem: (id: string) => void, onInsert: (day: number, time: string) => void, onEditItem: (item: ItineraryItem) => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `cell-${dayNum}-${timeStr}`,
     data: { day: dayNum, time: timeStr }
@@ -42,23 +130,15 @@ function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert }: {
 
   return (
     <div ref={setNodeRef} className={`h-28 border-b border-r border-[#E8F3EE] p-1.5 relative group ${isOver ? 'bg-[var(--color-primary-soft)]/50 ring-2 ring-inset ring-[var(--color-primary)]' : 'bg-transparent'} transition-colors flex flex-col gap-1 overflow-y-auto custom-scrollbar`}>
-      {/* Insert Button (High z-index, Bottom Right) */}
-      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white shadow-md border border-[#E8F3EE] flex items-center justify-center text-[var(--color-primary)] hover:text-white hover:bg-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-all z-50">
+      {/* Insert Button（常駐，行動裝置沒有 hover） */}
+      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white shadow-md border border-[#E8F3EE] flex items-center justify-center text-[var(--color-primary)] hover:text-white hover:bg-[var(--color-primary)] opacity-40 group-hover:opacity-100 transition-all z-50">
         <Plus className="w-3 h-3"/>
       </button>
 
       {/* Render mapped items */}
       <div className="relative z-10 flex flex-col gap-1 flex-1 pb-6 w-full">
         {items.map(item => (
-          <div key={item.id} className="bg-white p-2 rounded-lg shadow-sm border border-[#D8EBE3] relative group/item hover:border-[#9BDCC4] transition-colors">
-            <div className="flex justify-between items-start mb-1">
-              <span className="text-[9px] font-black font-mono text-white bg-[var(--color-ink)] px-1.5 py-0.5 rounded shadow-sm">
-                {item.start_time?.substring(0, 5) || timeStr}
-              </span>
-              <button onClick={(e) => { e.stopPropagation(); onRemoveItem(item.id); }} className="text-[#C4CFC9] hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all z-20"><Trash2 className="w-3 h-3" /></button>
-            </div>
-            <h4 className="font-bold text-[11px] text-[var(--color-ink)] leading-tight">{item.location}</h4>
-          </div>
+          <DraggableItineraryCard key={item.id} item={item} timeStr={timeStr} onRemove={onRemoveItem} onEdit={onEditItem} />
         ))}
       </div>
     </div>
@@ -135,6 +215,13 @@ export default function PlanPage() {
   const insertItinerary = useInsertItinerary(tripId);
   const removeItinerary = useRemoveItinerary(tripId);
   const addBucket = useAddBucket(tripId);
+  // P5d: 雙向拖曳與卡片編輯
+  const moveItinerary = useMoveItinerary(tripId);
+  const unassignItinerary = useUnassignItinerary(tripId);
+  const updateItineraryItem = useUpdateItineraryItem(tripId);
+  const updateBucketItem = useUpdateBucketItem(tripId);
+  const removeBucketItem = useRemoveBucketItem(tripId);
+  const { confirm } = useConfirm();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   
   // Grid State
@@ -156,6 +243,28 @@ export default function PlanPage() {
     }
   };
 
+  // P5e: 補定位模式（在常駐地圖上完成）
+  const [locateTarget, setLocateTarget] = useState<BucketItem | null>(null);
+  const openLocate = (item: BucketItem) => setLocateTarget(item);
+
+  // 從探索清單匯入備選池
+  const [isImportOpen, setImportOpen] = useState(false);
+  const { data: wishPlaces = [] } = useWishPlaces();
+  const bucketPlaceIds = useMemo(() => new Set(bucketList.map(b => b.place_id).filter(Boolean) as string[]), [bucketList]);
+
+  const importWish = async (p: WishPlace) => {
+    try {
+      await addBucket.mutateAsync({
+        trip_id: tripId, category: 'attraction', title: p.title,
+        note: p.note ?? null, link: p.source_url ?? null,
+        lat: p.lat, lng: p.lng, place_id: p.place_id, address: p.address, rating: p.rating,
+      });
+      toast(`「${p.title}」已加入備選池`, 'success');
+    } catch (error) {
+      toast('匯入失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
+  };
+
   // Add Bucket Item Modal
   const [isAddOpen, setAddOpen] = useState(false);
   const [bucketTitle, setBucketTitle] = useState('');
@@ -167,7 +276,88 @@ export default function PlanPage() {
   const [insertTime, setInsertTime] = useState('08:00');
   const [insertTitle, setInsertTitle] = useState('');
 
-  const [activeDragItem, setActiveDragItem] = useState<BucketItem | null>(null);
+  const [activeDrag, setActiveDrag] = useState<
+    { kind: 'bucket'; item: BucketItem } | { kind: 'itin'; item: ItineraryItem } | null
+  >(null);
+
+  // P5d: 行程卡編輯 Modal
+  const [editingItin, setEditingItin] = useState<ItineraryItem | null>(null);
+  const [itinTime, setItinTime] = useState('08:00');
+  const [itinTitle, setItinTitle] = useState('');
+  const [itinTransport, setItinTransport] = useState('機車');
+  const [itinNote, setItinNote] = useState('');
+  const [itinCoord, setItinCoord] = useState<PlaceCoord | null>(null);
+
+  const openEditItin = (item: ItineraryItem) => {
+    setEditingItin(item);
+    setItinTime(item.start_time?.substring(0, 5) || '08:00');
+    setItinTitle(item.location);
+    setItinTransport(item.transport_type || '機車');
+    setItinNote(item.note || '');
+    setItinCoord(item.lat != null && item.lng != null ? { lat: item.lat, lng: item.lng, placeId: item.place_id ?? null } : null);
+  };
+
+  const submitEditItin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItin || !itinTitle) return;
+    try {
+      await updateItineraryItem.mutateAsync({
+        id: editingItin.id,
+        data: {
+          start_time: itinTime, location: itinTitle, transport_type: itinTransport, note: itinNote || null,
+          lat: itinCoord?.lat ?? null, lng: itinCoord?.lng ?? null, place_id: itinCoord?.placeId ?? null,
+        },
+      });
+      setEditingItin(null);
+      toast('行程已更新', 'success');
+    } catch (error) {
+      toast('更新失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
+  };
+
+  // P5d: 備選池卡編輯 Modal
+  const [editingBucket, setEditingBucket] = useState<BucketItem | null>(null);
+  const [bEditTitle, setBEditTitle] = useState('');
+  const [bEditCategory, setBEditCategory] = useState<'accommodation' | 'attraction' | 'note'>('attraction');
+  const [bEditNote, setBEditNote] = useState('');
+  const [bEditLink, setBEditLink] = useState('');
+  const [bEditPrice, setBEditPrice] = useState('');
+
+  const openEditBucket = (item: BucketItem) => {
+    setEditingBucket(item);
+    setBEditTitle(item.title);
+    setBEditCategory(item.category);
+    setBEditNote(item.note || '');
+    setBEditLink(item.link || '');
+    setBEditPrice(item.price != null ? String(item.price) : '');
+  };
+
+  const submitEditBucket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBucket || !bEditTitle) return;
+    try {
+      await updateBucketItem.mutateAsync({
+        id: editingBucket.id,
+        data: {
+          title: bEditTitle, category: bEditCategory, note: bEditNote || null, link: bEditLink || null,
+          price: bEditPrice.trim() !== '' && !Number.isNaN(Number(bEditPrice)) ? Number(bEditPrice) : null,
+        },
+      });
+      setEditingBucket(null);
+      toast('備選項目已更新', 'success');
+    } catch (error) {
+      toast('更新失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
+  };
+
+  const handleDeleteBucket = async (item: BucketItem) => {
+    const ok = await confirm({ message: `確定刪除備選項目「${item.title}」嗎？`, confirmText: '刪除', danger: true });
+    if (!ok) return;
+    removeBucketItem.mutate(item.id, {
+      onSuccess: () => toast('已刪除', 'info'),
+      onError: (err) => toast('刪除失敗：' + (err instanceof Error ? err.message : '未知錯誤'), 'error'),
+    });
+  };
 
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 5 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } });
@@ -212,27 +402,57 @@ export default function PlanPage() {
     });
   };
 
-  const handleDragStart = (event: any) => {
-    const { active } = event;
-    if (active.data.current?.type === 'BucketItem') {
-      setActiveDragItem(active.data.current.item);
-    }
+  const handleDragStart = (event: { active: { data: { current?: { type?: string; item?: unknown } } } }) => {
+    const data = event.active.data.current;
+    if (data?.type === 'BucketItem') setActiveDrag({ kind: 'bucket', item: data.item as BucketItem });
+    else if (data?.type === 'ItineraryCard') setActiveDrag({ kind: 'itin', item: data.item as ItineraryItem });
+  };
+
+  // 與 getSlotItems 相同的取整規則：判斷「拖回原格」用
+  const slotOf = (t: string | null) => {
+    const time = t || '08:00:00';
+    const m = parseInt(time.substring(3, 5), 10);
+    return `${time.substring(0, 2)}:${m < 30 ? '00' : '30'}`;
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveDragItem(null);
+    setActiveDrag(null);
     const { active, over } = event;
     if (!over) return;
+    const activeType = active.data.current?.type;
 
-    if (active.id.toString().startsWith('bucket-') && over.id.toString().startsWith('cell-')) {
+    // P5d: 行程卡拖回備選池 → 退回備選
+    if (over.id === 'bucket-pool' && activeType === 'ItineraryCard') {
+      const item = active.data.current?.item as ItineraryItem;
+      unassignItinerary.mutate(item, {
+        onSuccess: () => toast(`「${item.location}」已退回備選池`, 'success'),
+        onError: (err) => toast('退回失敗: ' + (err instanceof Error ? err.message : '未知錯誤'), 'error'),
+      });
+      return;
+    }
+
+    if (!over.id.toString().startsWith('cell-')) return;
+    const cellDay = over.data.current?.day;
+    const cellTime = over.data.current?.time;
+    if (cellDay === undefined || !cellTime) return;
+
+    // 備選池 → 行程格（原有行為）
+    if (activeType === 'BucketItem') {
       const bucketItem = bucketList.find(b => `bucket-${b.id}` === active.id);
-      const cellDay = over.data.current?.day;
-      const cellTime = over.data.current?.time;
-      if (!bucketItem || cellDay === undefined || !cellTime) return;
-
+      if (!bucketItem) return;
       assignBucket.mutate({ bucketItem, day: cellDay, time: cellTime }, {
         onSuccess: () => toast('行程已建立', 'success'),
         onError: (err) => toast('指派失敗: ' + (err instanceof Error ? err.message : '未知錯誤'), 'error'),
+      });
+      return;
+    }
+
+    // P5d: 行程卡拖到別格 → 改天/改時間
+    if (activeType === 'ItineraryCard') {
+      const item = active.data.current?.item as ItineraryItem;
+      if (item.day === cellDay && slotOf(item.start_time) === cellTime) return; // 原格，不動
+      moveItinerary.mutate({ id: item.id, day: cellDay, time: cellTime }, {
+        onError: (err) => toast('移動失敗: ' + (err instanceof Error ? err.message : '未知錯誤'), 'error'),
       });
     }
   };
@@ -275,7 +495,8 @@ export default function PlanPage() {
   };
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans overflow-hidden" style={{ color: 'var(--color-ink)' }}>
+    // h-dvh：鎖定視窗高度，行程表/備選池只在自己面板內捲動，地圖不跟著跑
+    <div className="bg-white h-dvh flex flex-col font-sans overflow-hidden" style={{ color: 'var(--color-ink)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} currentPage="plan" />
 
       {/* Header */}
@@ -302,12 +523,23 @@ export default function PlanPage() {
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex-1 flex overflow-hidden">
-          
-          {/* Spreadsheet Board (Left/Scrollable Matrix) */}
-          <div className="flex-1 overflow-auto custom-scrollbar bg-[var(--color-bg-page)] p-6 flex justify-center">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+          {/* P5e: 常駐地圖（左 2/3）——搜尋 / 探索附近 / 定位都在這張圖上 */}
+          <div className="relative h-[38vh] lg:h-auto lg:flex-[2] min-w-0 border-b lg:border-b-0 lg:border-r border-[#E8F3EE]">
+            <PlanMapPanel
+              tripId={tripId as string}
+              itinerary={itinerary}
+              bucketList={bucketList}
+              locateTarget={locateTarget}
+              onClearLocate={() => setLocateTarget(null)}
+            />
+          </div>
+
+          {/* Spreadsheet Board（右側視窗化，內部捲動） */}
+          <div className="flex-1 lg:flex-[1] min-h-0 min-w-0 overflow-auto custom-scrollbar bg-[var(--color-bg-page)] p-3">
             
-            <div className="bg-white border text-[var(--color-ink)] border-[#D8EBE3] rounded-xl shadow-sm flex flex-col overflow-hidden max-w-full">
+            <div className="bg-white border text-[var(--color-ink)] border-[#D8EBE3] rounded-xl shadow-sm flex flex-col w-max">
               
               {/* Header Row (Days) */}
               <div className="flex border-b border-[#D8EBE3] bg-[var(--color-bg-page)] sticky top-0 z-10">
@@ -349,11 +581,12 @@ export default function PlanPage() {
                    <div key={d} className="w-48 flex-shrink-0 flex flex-col bg-white">
                      <div className="h-8 border-b border-r border-[#E8F3EE] bg-[var(--color-bg-page)]"></div>
                      {timeSlots.map(t => (
-                       <DroppableTimeCell 
-                         key={`${d}-${t}`} dayNum={d} timeStr={t} 
-                         items={getSlotItems(d, t)} 
+                       <DroppableTimeCell
+                         key={`${d}-${t}`} dayNum={d} timeStr={t}
+                         items={getSlotItems(d, t)}
                          onRemoveItem={handleRemoveItinerary}
                          onInsert={openInsertModal}
+                         onEditItem={openEditItin}
                        />
                      ))}
                      <AccommodationCell day={d} data={accommodations.find(a => a.day === d)} tripId={tripId as string} />
@@ -367,43 +600,56 @@ export default function PlanPage() {
           </div>
 
           {/* Bucket List Sidebar (Right) */}
-          <div className="w-64 bg-[var(--color-bg-page)] border-l border-[#E8F3EE] flex flex-col flex-shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10">
+          <div className="w-full h-56 lg:h-auto lg:w-64 bg-[var(--color-bg-page)] border-t lg:border-t-0 lg:border-l border-[#E8F3EE] flex flex-col flex-shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10">
             <div className="p-4 border-b border-[#E8F3EE] bg-white flex justify-between items-center z-10 shadow-sm relative">
               <div>
                 <h3 className="font-black text-[var(--color-ink)] flex items-center gap-2"><Navigation className="w-4 h-4 text-[var(--color-primary)]" /> 備選池</h3>
                 <p className="text-[9px] text-[var(--color-ink-muted)] font-bold mt-1 uppercase tracking-widest">拖曳項目至行程表</p>
               </div>
-              <button onClick={() => setAddOpen(true)} className="w-8 h-8 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-lg shadow-sm hover:bg-[var(--color-primary-strong)] transition">
-                <Plus className="w-4 h-4" />
-              </button>
+              <div className="flex gap-1.5">
+                <button onClick={() => setImportOpen(true)} className="w-8 h-8 flex items-center justify-center bg-white border border-[#D8EBE3] text-[var(--color-primary-strong)] rounded-lg shadow-sm hover:bg-[var(--color-primary-soft)] transition" title="從探索清單匯入">
+                  <Compass className="w-4 h-4" />
+                </button>
+                <button onClick={() => setAddOpen(true)} className="w-8 h-8 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-lg shadow-sm hover:bg-[var(--color-primary-strong)] transition" title="手動新增">
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+            <BucketPoolDropZone>
+              <p className="text-[9px] text-[var(--color-ink-muted)] font-bold mb-3 px-1 opacity-70">行程卡也可以拖回這裡退回備選</p>
               <div className="mb-6">
                 <h4 className="text-[10px] font-black text-[var(--color-ink-muted)] uppercase tracking-widest mb-2 px-1">景點 / 美食</h4>
                 {bucketList.filter(b => b.category === 'attraction').map(item => (
-                  <DraggableBucketItem key={item.id} item={item} />
+                  <DraggableBucketItem key={item.id} item={item} onLocate={openLocate} onEdit={openEditBucket} onDelete={handleDeleteBucket} />
                 ))}
               </div>
               <div className="mb-6">
                 <h4 className="text-[10px] font-black text-[var(--color-ink-muted)] uppercase tracking-widest mb-2 px-1">住宿</h4>
                 {bucketList.filter(b => b.category === 'accommodation').map(item => (
-                  <DraggableBucketItem key={item.id} item={item} />
+                  <DraggableBucketItem key={item.id} item={item} onLocate={openLocate} onEdit={openEditBucket} onDelete={handleDeleteBucket} />
                 ))}
               </div>
-            </div>
+            </BucketPoolDropZone>
           </div>
 
         </div>
 
         {/* Drag Overlay for smooth Visual Feedback */}
         <DragOverlay>
-          {activeDragItem ? (
+          {activeDrag?.kind === 'bucket' ? (
             <div className="p-3 bg-white border-2 border-[var(--color-primary)] rounded-xl shadow-2xl flex items-start gap-2 rotate-3 scale-105 opacity-90 w-48">
               <GripVertical className="w-4 h-4 text-[#C4CFC9] mt-1 flex-shrink-0" />
               <div>
-                <h4 className="font-bold text-sm text-[var(--color-ink)]">{activeDragItem.title}</h4>
+                <h4 className="font-bold text-sm text-[var(--color-ink)]">{activeDrag.item.title}</h4>
               </div>
+            </div>
+          ) : activeDrag?.kind === 'itin' ? (
+            <div className="p-2 bg-white border-2 border-[var(--color-primary)] rounded-lg shadow-2xl rotate-3 scale-105 opacity-90 w-40">
+              <span className="text-[9px] font-black font-mono text-white bg-[var(--color-ink)] px-1.5 py-0.5 rounded shadow-sm">
+                {activeDrag.item.start_time?.substring(0, 5)}
+              </span>
+              <h4 className="font-bold text-[11px] text-[var(--color-ink)] leading-tight mt-1">{activeDrag.item.location}</h4>
             </div>
           ) : null}
         </DragOverlay>
@@ -446,6 +692,86 @@ export default function PlanPage() {
               />
             </div>
             <button type="submit" className="w-full py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold hover:bg-[var(--color-primary-strong)]">儲存</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 從探索清單匯入 Modal */}
+      <Modal isOpen={isImportOpen} onClose={() => setImportOpen(false)} title="從探索清單匯入">
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          {wishPlaces.length === 0 && (
+            <p className="text-sm text-[var(--color-ink-muted)] font-bold text-center py-8">
+              探索清單還是空的——側欄「探索清單」可以開始收藏地點
+            </p>
+          )}
+          {wishPlaces.map(p => {
+            const st = wishStatus(p);
+            const added = !!p.place_id && bucketPlaceIds.has(p.place_id);
+            const gone = st === 'expired' || st === 'closed';
+            return (
+              <div key={p.id} className={`flex items-center gap-2 p-3 bg-white border border-[var(--color-border-hairline)] rounded-xl ${gone ? 'opacity-60' : ''}`}>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-sm text-[var(--color-ink)] flex items-center gap-1.5">
+                    <span className="truncate">{p.title}</span>
+                    {p.rating != null && <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-black flex-shrink-0"><Star className="w-3 h-3 fill-amber-400 text-amber-400" />{p.rating}</span>}
+                    {p.lat != null && <MapPin className="w-3 h-3 text-[var(--color-primary)] flex-shrink-0" />}
+                  </h4>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {gone && <span className="text-[9px] font-black text-red-500">{st === 'expired' ? '已結束' : '已歇業'}</span>}
+                    {p.address && <span className="text-[10px] text-[var(--color-ink-muted)] truncate">{p.address}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => importWish(p)}
+                  disabled={added || addBucket.isPending}
+                  className={`flex-shrink-0 text-[10px] font-black px-3 py-1.5 rounded-lg transition-all ${
+                    added ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] cursor-default'
+                      : 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-strong)] active:scale-95 disabled:opacity-50'
+                  }`}
+                >
+                  {added ? '✓ 已在池中' : '加入'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
+
+      {/* P5d: 行程卡編輯 Modal */}
+      <Modal isOpen={!!editingItin} onClose={() => setEditingItin(null)} title="編輯行程">
+        <form onSubmit={submitEditItin}>
+          <div className="space-y-4">
+            <div className="bg-[var(--color-primary-soft)]/60 p-3 rounded-xl border border-[#C4DED3] text-xs font-bold text-[var(--color-primary-strong)]">
+              Day {editingItin?.day}
+            </div>
+            <div className="flex gap-2">
+              <input type="time" value={itinTime} onChange={e => setItinTime(e.target.value)} className="bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-bold font-mono focus:ring-2 focus:ring-[var(--color-primary)] w-1/3" />
+              <input value={itinTitle} onChange={e => setItinTitle(e.target.value)} placeholder="行程名稱" className="w-2/3 bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-bold focus:ring-2 focus:ring-[var(--color-primary)]" />
+            </div>
+            <PlaceLocateField query={itinTitle} value={itinCoord} onChange={setItinCoord} />
+            <select value={itinTransport} onChange={e => setItinTransport(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-black appearance-none">
+              <option>機車</option><option>汽車</option><option>火車</option><option>高鐵</option><option>步行</option>
+            </select>
+            <textarea value={itinNote} onChange={e => setItinNote(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl h-20 outline-none resize-none font-medium focus:ring-2 focus:ring-[var(--color-primary)]" placeholder="備註..." />
+            <button type="submit" disabled={updateItineraryItem.isPending} className="w-full py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg hover:bg-[var(--color-primary-strong)] disabled:opacity-50">儲存</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* P5d: 備選池卡編輯 Modal */}
+      <Modal isOpen={!!editingBucket} onClose={() => setEditingBucket(null)} title="編輯備選項目">
+        <form onSubmit={submitEditBucket}>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setBEditCategory('attraction')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${bEditCategory === 'attraction' ? 'bg-[var(--color-primary)] text-white' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)]'}`}>景點/美食</button>
+              <button type="button" onClick={() => setBEditCategory('accommodation')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${bEditCategory === 'accommodation' ? 'bg-[var(--color-primary)] text-white' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)]'}`}>住宿</button>
+            </div>
+            <input value={bEditTitle} onChange={e => setBEditTitle(e.target.value)} placeholder="名稱" className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-bold focus:ring-2 focus:ring-[var(--color-primary)]" />
+            <input value={bEditLink} onChange={e => setBEditLink(e.target.value)} placeholder="相關連結（可選）" className="w-full bg-[var(--color-bg-page)] p-3 rounded-xl outline-none text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)]" />
+            <input value={bEditPrice} onChange={e => setBEditPrice(e.target.value)} inputMode="decimal" placeholder="金額（可選）" className="w-full bg-[var(--color-bg-page)] p-3 rounded-xl outline-none text-xs font-bold focus:ring-2 focus:ring-[var(--color-primary)]" />
+            <textarea value={bEditNote} onChange={e => setBEditNote(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl h-20 outline-none resize-none font-medium focus:ring-2 focus:ring-[var(--color-primary)]" placeholder="備註（可選）" />
+            {editingBucket?.address && <p className="text-[10px] text-[var(--color-ink-muted)] px-1 flex items-center gap-1"><MapPin className="w-3 h-3" />{editingBucket.address}</p>}
+            <button type="submit" disabled={updateBucketItem.isPending} className="w-full py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg hover:bg-[var(--color-primary-strong)] disabled:opacity-50">儲存</button>
           </div>
         </form>
       </Modal>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import BottomTabs from '@/components/BottomTabs';
 import Modal from '@/components/Modal';
@@ -10,11 +11,14 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { ItinerarySkeleton } from '@/components/Skeleton';
 import type { ItineraryItem } from '@/lib/types';
-import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket, Bed } from 'lucide-react';
+import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket, Bed, X } from 'lucide-react';
 import { useTrip } from '@/features/trips/hooks/useTrip';
 import { useMembers } from '@/features/members/hooks/useMembers';
 import { useItinerary } from '@/features/itinerary/hooks/useItinerary';
 import { useSaveItinerary, useDeleteItinerary, useUpdateMemberTicket } from '@/features/itinerary/hooks/useItineraryMutations';
+import DayRouteMap from '@/features/map/components/DayRouteMap';
+import { useDayTravelTimes } from '@/features/map/hooks/useOsrmRoute';
+import PlaceLocateField, { type PlaceCoord } from '@/features/suggestions/components/PlaceLocateField';
 
 export default function TripMasterPage() {
   const params = useParams();
@@ -31,6 +35,7 @@ export default function TripMasterPage() {
   const updateTicket = useUpdateMemberTicket(tripId);
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [mapHintDismissed, setMapHintDismissed] = useState(false); // P5d: 地圖提示（本次瀏覽有效）
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
@@ -51,6 +56,7 @@ export default function TripMasterPage() {
   const [note, setNote] = useState('');
   const [mapUrl, setMapUrl] = useState('');
   const [spotUrls, setSpotUrls] = useState<Record<string, string>>({});
+  const [coord, setCoord] = useState<PlaceCoord | null>(null); // P5a: Google 定位座標
 
   const spots = useMemo(() => {
     return location.split(/[\/\+、，,]/).map(s => s.trim()).filter(Boolean);
@@ -80,6 +86,7 @@ export default function TripMasterPage() {
   };
 
   const currentItems = useMemo(() => data.filter(i => i.day === activeDay), [data, activeDay]);
+  const { data: travelLegs } = useDayTravelTimes(currentItems); // P5b: 相鄰定位點交通時間（OSRM）
 
   const days = useMemo(() => {
     if (!tripInfo?.start_date || !tripInfo?.end_date) return [1];
@@ -115,7 +122,8 @@ export default function TripMasterPage() {
     const payload = {
       day, start_time: startTime, end_time: endTime || null,
       location, transport_type: transport, item_type: itemType,
-      note, trip_id: tripId, map_url: finalMapUrl
+      note, trip_id: tripId, map_url: finalMapUrl,
+      lat: coord?.lat ?? null, lng: coord?.lng ?? null, place_id: coord?.placeId ?? null,
     };
 
     try {
@@ -131,6 +139,7 @@ export default function TripMasterPage() {
   const resetForm = () => {
     setEditingId(null); setLocation(''); setNote(''); setMapUrl(''); setSpotUrls({});
     setStartTime('08:00'); setEndTime(''); setTransport('機車'); setItemType('activity');
+    setCoord(null);
   };
 
   const handleEdit = (item: ItineraryItem) => {
@@ -138,6 +147,7 @@ export default function TripMasterPage() {
     setEndTime(item.end_time || ''); setLocation(item.location);
     setTransport(item.transport_type); setItemType(item.item_type || 'activity');
     setNote(item.note || '');
+    setCoord(item.lat != null && item.lng != null ? { lat: item.lat, lng: item.lng, placeId: item.place_id ?? null } : null);
 
     let parsedUrls: Record<string, string> = {};
     let defaultUrl = '';
@@ -242,6 +252,25 @@ export default function TripMasterPage() {
         </div>
 
         <div className="min-h-screen px-6 pb-40 rounded-t-[3rem]" style={{ background: 'var(--color-bg-page)' }}>
+          {/* P5a: 當日路線地圖（僅顯示有座標的行程點） */}
+          {!loading && (
+            <div className="max-w-xl mx-auto pt-4">
+              <DayRouteMap items={currentItems} />
+              {/* P5d: 沒有定位點時的提示（可關，本次瀏覽有效） */}
+              {currentItems.length > 0 && !currentItems.some(i => i.lat != null && i.lng != null) && !mapHintDismissed && (
+                <div className="flex items-center gap-2 bg-white/80 border border-[var(--color-border-hairline)] rounded-xl px-4 py-3">
+                  <Map className="w-4 h-4 text-[var(--color-primary)] flex-shrink-0" />
+                  <span className="flex-1 text-[11px] font-bold text-[var(--color-ink-muted)] leading-relaxed">
+                    本日行程還沒有定位點——編輯行程按「用 Google 定位」，或到規劃頁從備選池拖入已定位（📍）項目，這裡就會出現當日地圖
+                  </span>
+                  <Link href={`/trip/${tripId}/plan`} className="flex-shrink-0 text-[10px] font-black text-[var(--color-primary-strong)] bg-[var(--color-primary-soft)] px-3 py-1.5 rounded-lg hover:bg-[#B9E7D6] transition-colors">去規劃</Link>
+                  <button onClick={() => setMapHintDismissed(true)} className="flex-shrink-0 p-1 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors" title="關閉提示">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="max-w-xl mx-auto relative pt-8">
             <div className="absolute left-[52px] top-0 bottom-0 w-1 bg-[#D8EBE3] rounded-full" />
 
@@ -283,6 +312,15 @@ export default function TripMasterPage() {
                           {item.start_time?.substring(0, 5)} {item.end_time && `~ ${item.end_time.substring(0, 5)}`}
                         </span>
                         {isTicket && <span className="text-orange-600 font-bold ml-1 italic tracking-widest flex items-center gap-1"><Ticket className="w-3 h-3"/> TICKET LOG</span>}
+                        {(() => {
+                          const leg = travelLegs?.[item.id];
+                          if (!leg) return null;
+                          return (
+                            <span className="bg-white border border-[var(--color-border-hairline)] text-[var(--color-ink-muted)] px-2.5 py-1 rounded-xl shadow-sm flex items-center gap-1" title="從上一個定位點出發的預估交通時間（OSRM）">
+                              {getTransportEmoji(leg.transport)} {leg.transport === '步行' ? '步行' : '車程'}約 {leg.durationMin} 分・{leg.distanceKm} km
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       {(() => {
@@ -309,7 +347,8 @@ export default function TripMasterPage() {
                                 </h3>
                               </div>
 
-                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* P5d: 操作鈕常駐（行動裝置沒有 hover） */}
+                              <div className="flex gap-2">
                                 {(() => {
                                   if (!item.map_url) return null;
                                   if (item.map_url.startsWith('[')) {
@@ -416,6 +455,9 @@ export default function TripMasterPage() {
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-bold text-sm" />
             </div>
             <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-[var(--color-bg-page)] p-4 rounded-xl outline-none font-black focus:ring-2 focus:ring-[var(--color-primary)] transition-all" placeholder="地點 (例: 騎車90分鐘 / 台中隨興)" />
+
+            {/* P5a: Google 定位（存座標供當日地圖與交通時間使用） */}
+            <PlaceLocateField query={location} value={coord} onChange={setCoord} />
 
             <div className="relative">
               {spots.length <= 1 ? (

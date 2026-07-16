@@ -1,6 +1,6 @@
 # STATUS — Travel Record App 重構進度與交接
 
-> 最後更新：2026-07-16（P3 進行中：R2 已建好、543 檔遷移上傳、photos 頁重寫完成；差 r2.dev 公開網址 + Vercel env，見 P3 段落）
+> 最後更新：2026-07-16（P5a+P5b 程式完成：地圖、地圖找點、建議景點、交通時間；差使用者跑 migration + Vercel env，見 P5 段落）
 > 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
 > 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
 
@@ -24,8 +24,9 @@ Supabase (Postgres + Auth + Storage + Realtime) · TanStack Query · Zustand · 
 | P2b | 開啟 RLS + 未登入導向 /login 閘門 | ⏸ **擱置中**：使用者這幾天陸續讓成員登入綁定，到齊後再做（SQL 已備好） |
 | P3 | 照片改存 Cloudflare R2（建 bucket、presigned 上傳、從 Google Drive 遷移約 1.76GB、重寫 photos 頁） | ✅ 完成（2026-07-16；543 檔上線，Drive 原檔留作備份待使用者確認後自行處理） |
 | P4 | 視覺重構：把「湖水青旅」設計系統套到所有頁面 | ✅ 完成（2026-07-15；photos 頁除外，留給 P3 重寫時套） |
-| P5a | 內建地圖（Leaflet） | ⬜ 未開始 |
-| P5b | 建議景點 + 交通時間（Google Places，需 API 金鑰） | ⬜ 未開始 |
+| P5a | 內建地圖（Leaflet） | ✅ 程式完成（2026-07-16；**待使用者跑 migration**，見 P5 段落） |
+| P5b | 建議景點 + 交通時間（Google Places + OSRM） | ✅ 完成（2026-07-16；金鑰已申請、migration 與 Vercel env 使用者已完成） |
+| P5d | 規劃頁互動打磨：雙向拖曳、卡片編輯/刪除、地圖提示（對標 Funliday/去趣） | ✅ 程式完成（2026-07-16，待使用者試用回饋） |
 | P5c | AI 行程建議 | ⬜ 未開始（最後、可選） |
 | P6 | 成員管理與權限：email 邀請成員、身分組分級控制權限（2026-07-15 使用者新需求） | ⬜ 未開始，**依賴 P2b**（權限強制力靠 RLS） |
 
@@ -170,9 +171,80 @@ features/<name>/
   多為 SpreadsheetImport 的 no-explicit-any 與 set-state-in-effect 舊警告，可日後專門清）。
 - photos 頁未動（P3 重寫時直接用新設計）。深色模式未做（可後補）。
 
-### P5a 地圖 / P5b 建議景點 / P5c AI
-- 地圖用已安裝的 Leaflet + 明亮 tile；POI 資料打 Google Places（伺服器端 Route Handler 代理隱藏金鑰）；
-  `trip_itinerary` 加 `lat`/`lng`。使用者將自行申請 Google Places 金鑰。AI 行程排最後、可選。
+### P5a 地圖 / P5b 建議景點 — ✅ 程式完成（2026-07-16），等兩個使用者步驟
+
+**使用者已完成（2026-07-16）**：migration 已跑、Vercel 已加 `GOOGLE_PLACES_API_KEY`、
+台南備選池 21 筆已補定位、當日地圖已看到。
+
+**架構決策（勿改回）**：
+- 金鑰只在伺服器：`lib/places.ts` + `app/api/places/search|nearby`（FieldMask 限縮在低價 SKU、
+  maxResultCount 8/12；前端「送出才查」+ TanStack Query 永久快取，控制在每月免費 5,000 次內）。
+- 底圖：CARTO Voyager raster tile（免費、免金鑰），**沒有**用 MapTiler/Mapbox（使用者同意，省一把金鑰）。
+- 交通時間：OSRM 公開服務（routing.openstreetmap.de，免費免金鑰）——機車/汽車=driving、步行=foot、
+  火車/高鐵不估（道路路由不適用）。**沒有**用 Google Directions。
+- 舊行程不回填座標（使用者同意「過去的就過了」）；備選池舊項目（台南）靠「補定位」鈕補座標。
+
+**程式落點**：
+- `features/map/`：`TripMap.tsx`（Leaflet 封裝，頁面用 next/dynamic ssr:false 載入）、
+  `DayRouteMap.tsx`（trip 主頁當日路線卡，無座標點時整卡隱藏）、
+  `MapPickerModal.tsx`（plan 頁全螢幕地圖：搜尋、探索附近〔景點/美食/咖啡〕、加入備選池、補定位模式）、
+  `hooks/useOsrmRoute.ts`（useDayTravelTimes：相鄰定位點交通時間，回 `{目的地行程id: leg}`）。
+- `features/suggestions/`：`api.ts`（打自家代理）、hooks（usePlaceSearch/useNearby，都是「送出才查」）、
+  `PlaceCard.tsx`、`PlaceLocateField.tsx`（trip 主頁行程表單內的定位欄）。
+- 資料流：備選池項目定位後 `lat/lng/place_id/address/rating` 入 `trip_bucket_list`；
+  拖進行程表時 `useAssignBucket` 把座標一併帶進 `trip_itinerary`；行程表單也可直接定位。
+- 驗證已全綠：typecheck / test 4/4 / build / lint（兩頁面既有問題 13→12，新檔案 0 問題）/
+  代理端到端 curl 通（赤崁樓、台南牛肉湯）/ OSRM driving+foot 通 / 金鑰不在 client bundle。
+
+### P5d 規劃頁互動打磨 — ✅ 程式完成（2026-07-16）
+> 起因：使用者反映「卡片樣式的元素卻不能編輯/刪除/拖曳」，標準對標 **Funliday / 去趣**
+> （已存長期記憶 ux-standard：卡片一律要能編輯/刪除/拖曳、操作鈕不能只靠 hover）。
+
+- **雙向拖曳**：plan 頁行程格卡可拖到別格（改天/改時間，`useMoveItinerary` 樂觀更新）、
+  拖回備選池（退回備選，保留名稱/備註/連結/座標，`useUnassignItinerary`，與 useAssignBucket 互為鏡像）。
+- **點擊編輯**：行程格卡點擊開編輯 Modal（時間/名稱/交通/備註/Google 定位欄）；
+  備選池卡點擊開編輯 Modal（名稱/分類/連結/金額/備註），卡上加常駐刪除鈕（confirm 保護）＋定位鈕。
+- **主頁小修**：行程卡編輯/刪除鈕改常駐（原 hover 才顯示，手機摸不到）；
+  當天沒定位點時顯示可關提示條（引導去定位/去規劃，session 內有效，不寫 localStorage）。
+- 驗證：typecheck ✅ / test 4/4 ✅ / build ✅ / lint 既有問題 13→11（新程式碼 0 問題）。
+- **後續**：使用者試用後要再討論「整體方便性對標市面 App」的下一輪改善清單。
+
+### P5e Plan 頁改版 — ✅ 程式完成（2026-07-16，使用者已確認開工順序）
+- 版面：`[常駐地圖 lg:flex-2] [行程表 lg:flex-1 視窗化內部捲動] [備選池 w-64]`；
+  小螢幕上下堆疊（地圖 38vh、行程表 flex-1、備選池 h-56）。
+- 新元件 `features/map/components/PlanMapPanel.tsx`：搜尋列（左上）、探索附近（右上）、
+  浮動結果卡列（左側，可清除）、補定位模式橫幅；地圖同時畫已排行程點（深青、Day 編號）＋
+  備選池定位點（靛藍小點）＋搜尋（青）/探索（橘）結果。
+- **MapPickerModal 已刪除**（被 PlanMapPanel 完全取代；要找舊碼看 git history）。
+- 行程表格線容器由 `max-w-full overflow-hidden` 改 `w-max`——原寫法會把超出寬度的天數裁掉，
+  改後在視窗內雙向捲動（此為既有 bug，順手修）。
+- 驗證：typecheck ✅ / test 4/4 ✅ / build ✅ / lint 新程式碼 0 問題。
+- **2026-07-16 使用者回饋修正**：(1) 三處地圖容器（PlanMapPanel / DayRouteMap / places 頁）加 `isolate`——
+  Leaflet 內部 z-index 400–1000 會蓋過側欄 z-200，isolate 把它關進自己的 stacking context；
+  (2) plan 頁根元素 `min-h-screen`→`h-dvh` 鎖視窗高度，行程表/備選池只在面板內捲、地圖不動。
+
+### 探索清單 MVP — ✅ 程式完成（2026-07-16），**待使用者跑 migration**
+- **【使用者手動】Supabase SQL Editor 跑 `supabase/migrations/p7_wish_places.sql`**（建 `wish_places` 表，
+  可重跑）。沒跑之前 /places 頁會讀取失敗。
+- 結構：`features/wishlist/`（api + useWishPlaces/wishStatus + mutations + useStaleStatusCheck）、
+  `app/places/page.tsx`（地圖＋篩選＋卡片牆＋新增/編輯 Modal）、Sidebar 入口「探索清單」、
+  Plan 頁備選池 Compass 鈕＝「從探索清單匯入」（place_id 去重、已結束/歇業降透明度仍可加）。
+- 欄位：來源（IG/YT/朋友/去過/其他）＋來源連結、發現者（trip_members）、限時截止日
+  （過期前端自動標「已結束」，見 `wishStatus()`）、`business_status`＋`status_checked_at`。
+- 存活檢查：`api/places/details` 代理（FieldMask 只取 businessStatus，已實測 OPERATIONAL 回傳正常）；
+  進頁自動補查「>30 天未檢查」前 5 筆＋卡片手動重查鈕；Google 查無此點回 `NOT_FOUND` 視同歇業。
+- 驗證：typecheck ✅ / build ✅（/places、/api/places/details 已註冊）/ lint 新程式碼 0 問題。
+
+### 分享入口 — ✅ 程式完成（2026-07-16）
+- `public/manifest.json` 加 `share_target`（GET → /places，params 對應 shared_title/text/url）。
+- /places 頁掛載時讀 `?shared_*` 參數 → 自動開新增表單並預填（從 text 抽 URL、
+  依網域自動選 IG/YT 來源、replaceState 清參數防重複觸發）。
+- **Android 使用方式**：部署後用 Chrome 開網站 → 選單「加入主畫面（安裝應用程式）」→
+  之後 IG 分享選單就會出現本 App。**iOS**：Safari 不支援 share target，
+  需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
+- 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
+
+### P5c AI 行程建議 — ⬜ 未開始（最後、可選）
 
 ### P6（成員管理與權限）— 2026-07-15 使用者新需求，排在介面（P4）完成後
 > 使用者原話：介面完成之後，前端要能直接操作成員設定，例如「發郵件邀請誰」、
