@@ -6,7 +6,7 @@ export const membersApi = {
     supabase.from('trip_members').select('*').order('created_at', { ascending: true }),
 
   create: (payload: { real_name: string; nickname: string; pin: string }) =>
-    supabase.from('trip_members').insert([payload]),
+    supabase.from('trip_members').insert([payload]).select().single(),
 
   remove: (id: string) =>
     supabase.from('trip_members').delete().eq('id', id),

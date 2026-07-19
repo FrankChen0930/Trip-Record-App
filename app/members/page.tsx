@@ -8,11 +8,16 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { MemberSkeleton } from '@/components/Skeleton';
 import { useMembers } from '@/features/members/hooks/useMembers';
+import { useVisibleMembers } from '@/features/members/hooks/useVisibleMembers';
 import { useAddMember, useDeleteMember } from '@/features/members/hooks/useMemberMutations';
+import { useGroups } from '@/features/groups/hooks/useGroups';
 
 export default function MembersPage() {
   // 伺服器資料改由 feature hooks（TanStack Query）提供
+  // 全名冊只給 PIN 登入比對用；列表顯示一律走 useVisibleMembers（p9 身分組可見性）
   const { data: members = [], isLoading: loading } = useMembers();
+  const { visible: visibleMembers, isAdmin } = useVisibleMembers();
+  const { data: groups = [] } = useGroups();
   const addMember = useAddMember();
   const deleteMember = useDeleteMember();
 
@@ -25,6 +30,7 @@ export default function MembersPage() {
   const [newRealName, setNewRealName] = useState('');
   const [newNickname, setNewNickname] = useState('');
   const [newPin, setNewPin] = useState('');
+  const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
 
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -50,9 +56,9 @@ export default function MembersPage() {
     e.preventDefault();
     if (!newRealName || !newNickname || !newPin) { toast('請填寫完整資訊', 'warning'); return; }
     try {
-      await addMember.mutateAsync({ real_name: newRealName, nickname: newNickname, pin: newPin });
+      await addMember.mutateAsync({ real_name: newRealName, nickname: newNickname, pin: newPin, groupIds: newGroupIds });
       setAddModalOpen(false);
-      setNewRealName(''); setNewNickname(''); setNewPin('');
+      setNewRealName(''); setNewNickname(''); setNewPin(''); setNewGroupIds([]);
       toast('新成員已加入團隊！', 'success');
     } catch (error) {
       toast('新增失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
@@ -119,13 +125,13 @@ export default function MembersPage() {
 
           {loading ? <MemberSkeleton /> : (
             <div className="space-y-6">
-              {members.length === 0 ? (
+              {visibleMembers.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">👤</div>
-                  <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>還沒有成員</h3>
-                  <p className="text-sm" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>點擊下方按鈕新增第一位夥伴！</p>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>{myId ? '你的身分組還沒有其他成員' : '請先驗證身分'}</h3>
+                  <p className="text-sm" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>{myId ? '名冊只會顯示與你同身分組的夥伴' : '輸入上方 PIN 碼後即可查看名冊'}</p>
                 </div>
-              ) : members.map((m) => (
+              ) : visibleMembers.map((m) => (
                 <div key={m.id} className="relative pl-10 group">
                   <div className={`absolute left-0 top-6 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-[3px] border-[var(--color-bg-page)] z-10 transition-all duration-300 group-hover:scale-125 ${m.id === myId ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-ink)]'}`} />
 
@@ -142,8 +148,12 @@ export default function MembersPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
+                      {m.role === 'admin' && <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">管理員</span>}
                       {m.id === myId && <span className="text-[9px] font-bold text-[var(--color-primary-strong)] bg-[var(--color-primary-soft)] px-2.5 py-1 rounded-lg">是我</span>}
-                      <button onClick={() => handleDelete(m.id, m.nickname)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[#C4CFC9] hover:text-red-400 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">✕</button>
+                      {/* 刪除限管理員；鈕常駐（行動裝置沒有 hover） */}
+                      {isAdmin && m.id !== myId && (
+                        <button onClick={() => handleDelete(m.id, m.nickname)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[#C4CFC9] hover:text-red-400 hover:bg-red-50 transition-all">✕</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -152,12 +162,15 @@ export default function MembersPage() {
           )}
         </div>
 
-        <button
-          onClick={() => setAddModalOpen(true)}
-          className="w-full border-2 border-dashed border-[#C4DED3] py-4 rounded-xl text-sm text-[var(--color-ink-muted)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary-strong)] transition-all font-medium"
-        >
-          + 新增成員
-        </button>
+        {/* 新增成員限管理員（p9） */}
+        {isAdmin && (
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="w-full border-2 border-dashed border-[#C4DED3] py-4 rounded-xl text-sm text-[var(--color-ink-muted)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary-strong)] transition-all font-medium"
+          >
+            + 新增成員
+          </button>
+        )}
       </div>
 
       {/* 新增成員 Modal */}
@@ -176,6 +189,26 @@ export default function MembersPage() {
               <label className="text-xs font-bold text-[var(--color-ink-muted)] block mb-2">身分 PIN 碼 (4位數)</label>
               <input value={newPin} onChange={e => setNewPin(e.target.value)} maxLength={4} className="w-full border-none bg-[var(--color-bg-page)] p-4 rounded-xl text-center tracking-[1em] font-bold outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all" placeholder="0000" />
             </div>
+            {groups.length > 0 && (
+              <div>
+                <label className="text-xs font-bold text-[var(--color-ink-muted)] block mb-2">加入身分組（可複選）</label>
+                <div className="flex flex-wrap gap-2">
+                  {groups.map(g => {
+                    const selected = newGroupIds.includes(g.id);
+                    return (
+                      <button
+                        key={g.id} type="button"
+                        onClick={() => setNewGroupIds(prev => selected ? prev.filter(id => id !== g.id) : [...prev, g.id])}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${selected ? 'text-white shadow-md scale-105' : 'bg-[#EEF1F0] text-[var(--color-ink-muted)] hover:bg-[#E1E7E4]'}`}
+                        style={selected ? { backgroundColor: g.color } : {}}
+                      >
+                        {g.icon} {g.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-3 mt-10">
             <button type="button" onClick={() => setAddModalOpen(false)} className="flex-1 py-4 bg-[#EEF1F0] text-[var(--color-ink)] rounded-xl font-bold hover:bg-[#E1E7E4] transition-colors">取消</button>

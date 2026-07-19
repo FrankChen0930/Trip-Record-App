@@ -46,6 +46,7 @@ export interface Member {
   pin: string;
   email?: string | null;     // P2: 用於 Magic Link 登入對應
   user_id?: string | null;   // P2: 綁定的 Supabase Auth 使用者
+  role?: 'admin' | 'member'; // P6/p9: admin 可管理名冊與身分組；member 唯讀
   created_at: string;
 }
 

@@ -8,15 +8,21 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import type { Group } from '@/lib/types';
 import { useMembers } from '@/features/members/hooks/useMembers';
+import { useCurrentMember } from '@/features/members/hooks/useCurrentMember';
 import { useGroups, useGroupMembers } from '@/features/groups/hooks/useGroups';
 import { useSaveGroup, useDeleteGroup, useToggleGroupMember } from '@/features/groups/hooks/useGroupMutations';
 
 export default function GroupsPage() {
   // 伺服器資料改由 feature hooks 提供
-  const { data: groups = [], isLoading: groupsLoading } = useGroups();
+  const { data: allGroups = [], isLoading: groupsLoading } = useGroups();
   const { data: members = [], isLoading: membersLoading } = useMembers();
   const { data: groupMembers = [], isLoading: gmLoading } = useGroupMembers();
   const loading = groupsLoading || membersLoading || gmLoading;
+  // p9：admin 看得到／管得動全部身分組；一般成員只看得到自己所屬的組（唯讀）
+  const { me, isAdmin } = useCurrentMember();
+  const groups = isAdmin
+    ? allGroups
+    : allGroups.filter(g => me && groupMembers.some(gm => gm.group_id === g.id && gm.member_id === me.id));
   const saveGroup = useSaveGroup();
   const deleteGroup = useDeleteGroup();
   const toggleGroupMember = useToggleGroupMember();
@@ -116,8 +122,8 @@ export default function GroupsPage() {
         ) : groups.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">🏷️</div>
-            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>還沒有群組</h3>
-            <p className="text-sm mb-6" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>建立群組來分隔不同旅行團體的內容！</p>
+            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>{isAdmin ? '還沒有群組' : '你還沒有加入任何身分組'}</h3>
+            <p className="text-sm mb-6" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>{isAdmin ? '建立群組來分隔不同旅行團體的內容！' : '請聯絡管理員將你加入身分組'}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -137,8 +143,12 @@ export default function GroupsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: group.color }} />
-                        <button onClick={() => openEditModal(group)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all">✎</button>
-                        <button onClick={() => handleDeleteGroup(group.id, group.name)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-red-500 hover:bg-red-50 transition-all">✕</button>
+                        {isAdmin && (
+                          <>
+                            <button onClick={() => openEditModal(group)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all">✎</button>
+                            <button onClick={() => handleDeleteGroup(group.id, group.name)} className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--color-ink-muted)] hover:text-red-500 hover:bg-red-50 transition-all">✕</button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -149,12 +159,14 @@ export default function GroupsPage() {
                           {m.nickname}
                         </span>
                       ))}
-                      <button
-                        onClick={() => setManagingGroupId(isManaging ? null : group.id)}
-                        className="text-[10px] text-[var(--color-ink-muted)] px-2 py-1 rounded-lg hover:bg-[var(--color-primary-soft)] transition-colors font-bold"
-                      >
-                        {isManaging ? '收合' : '+ 管理成員'}
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setManagingGroupId(isManaging ? null : group.id)}
+                          className="text-[10px] text-[var(--color-ink-muted)] px-2 py-1 rounded-lg hover:bg-[var(--color-primary-soft)] transition-colors font-bold"
+                        >
+                          {isManaging ? '收合' : '+ 管理成員'}
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -189,12 +201,15 @@ export default function GroupsPage() {
           </div>
         )}
 
-        <button
-          onClick={() => { closeModal(); setModalOpen(true); }}
-          className="w-full border-2 border-dashed border-[#C4DED3] py-4 rounded-xl text-sm text-[var(--color-ink-muted)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary-strong)] transition-all font-medium"
-        >
-          + 建立新群組
-        </button>
+        {/* 建立群組限管理員（p9） */}
+        {isAdmin && (
+          <button
+            onClick={() => { closeModal(); setModalOpen(true); }}
+            className="w-full border-2 border-dashed border-[#C4DED3] py-4 rounded-xl text-sm text-[var(--color-ink-muted)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary-strong)] transition-all font-medium"
+          >
+            + 建立新群組
+          </button>
+        )}
       </div>
 
       {/* 新增/編輯 Modal */}

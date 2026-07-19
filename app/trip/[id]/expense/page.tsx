@@ -11,7 +11,7 @@ import { ExpenseSkeleton } from '@/components/Skeleton';
 import type { Expense } from '@/lib/types';
 import { Menu, DollarSign, Trash2, Edit2, Copy, Receipt } from 'lucide-react';
 import { useTrip } from '@/features/trips/hooks/useTrip';
-import { useMembers } from '@/features/members/hooks/useMembers';
+import { useTripMembers } from '@/features/members/hooks/useTripMembers';
 import { useExpenses } from '@/features/expenses/hooks/useExpenses';
 import { useSaveExpense, useDeleteExpense, useSettleDebt } from '@/features/expenses/hooks/useExpenseMutations';
 import { computeBalances, getTransactions } from '@/features/expenses/settle';
@@ -22,7 +22,8 @@ export default function TripExpensePage() {
 
   // 伺服器資料改由 feature hooks 提供（useExpenses 內含 Realtime 訂閱）
   const { data: tripInfo } = useTrip(tripId);
-  const { data: members = [] } = useMembers();
+  // p9：成員名單限定為旅程所屬身分組（代墊人/分攤對象不再列出全站成員）
+  const { data: members } = useTripMembers(tripId);
   const { data: expenses = [], isLoading: loading } = useExpenses(tripId);
   const saveExpense = useSaveExpense(tripId);
   const deleteExpense = useDeleteExpense(tripId);

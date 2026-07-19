@@ -8,7 +8,7 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Menu, Plus, Compass, Star, MapPin, Link as LinkIcon, RefreshCw, Edit2, Trash2, Clock, Loader2 } from 'lucide-react';
 import type { WishPlace, WishSourceType } from '@/lib/types';
-import { useMembers } from '@/features/members/hooks/useMembers';
+import { useVisibleMembers } from '@/features/members/hooks/useVisibleMembers';
 import { useWishPlaces, wishStatus, type WishDisplayStatus } from '@/features/wishlist/hooks/useWishPlaces';
 import { useAddWishPlace, useUpdateWishPlace, useRemoveWishPlace, useCheckWishStatus, useStaleStatusCheck } from '@/features/wishlist/hooks/useWishMutations';
 import PlaceLocateField, { type PlaceCoord } from '@/features/suggestions/components/PlaceLocateField';
@@ -44,7 +44,8 @@ export default function PlacesPage() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: places = [], isLoading } = useWishPlaces();
-  const { data: members = [] } = useMembers();
+  // p9：發現者名單只列自己看得到的成員（同身分組）
+  const { visible: members } = useVisibleMembers();
   useStaleStatusCheck(places);
 
   const addWish = useAddWishPlace();

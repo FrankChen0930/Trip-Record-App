@@ -70,6 +70,9 @@
 | real_name | text | 真實姓名 |
 | nickname | text | 顯示暱稱 |
 | pin | text | 4 位數 PIN 碼 |
+| email | text | Magic Link 登入對應（P2a） |
+| user_id | uuid | 綁定的 Supabase Auth 使用者（P2a） |
+| role | text | 'admin' \| 'member'，預設 member（2026-07-20 p9）；admin 可管理名冊/身分組，P2b 前僅 UI 層效力 |
 | created_at | timestamptz | 建立時間 |
 
 6. trip_expenses (支出紀錄)

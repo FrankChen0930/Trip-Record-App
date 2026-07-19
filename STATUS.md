@@ -248,7 +248,25 @@ features/<name>/
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
 
-### 2026-07-19 使用回饋打磨（第一輪）— ✅ 程式完成，**等 p8 migration 跑完才能部署**
+### 2026-07-20 P6 前半：成員角色 + 身分組可見性 — ✅ 程式完成，**等 p9 migration 跑完才能部署**
+> 使用者需求：自己（豆腐）要有絕對掌控權、可直接建立成員（兩天後要跟女友出遊，對方還不在系統內）、
+> 成員只能看見同身分組的成員。⚠️ P2b 前這些都只有 UI 層效力（STATUS 既有註記），RLS 開啟後由 policy 補強制力。
+
+- **p9 migration（使用者要先跑）**`supabase/migrations/p9_member_roles.sql`：
+  `trip_members.role`（admin|member，預設 member）、豆腐＝admin；
+  四個既有旅程 `group_id` 從 null（公開）改掛「小港人」；豆腐加入「💘」身分組（使用者已自行建組，原本 0 成員）。
+- **新 hooks**（`features/members/hooks/`）：`useCurrentMember`（localStorage.my_member_id → me/isAdmin）、
+  `useVisibleMembers`（admin 全部；member 只看同組成員含自己；未驗證＝空）、
+  `useTripMembers`（旅程掛組→該組成員；無組→可見成員。記帳/票券名單用這個，女友旅程不會再列出小港人全員）。
+- **頁面權限**：成員頁（列表走可見性、新增/刪除限 admin、刪除鈕改常駐、admin 徽章、新增時可勾身分組——
+  `useAddMember` 支援 groupIds，`membersApi.create` 改 `.select().single()` 回傳新 id）；
+  身分組頁（非 admin 只見自己的組且唯讀）；首頁（admin 看全部旅程；未驗證身分看不到旅程，空狀態導去輸入 PIN）；
+  places 頁發現者名單走可見成員。
+- **女友上車流程**：豆腐在成員頁「+ 新增成員」（填暱稱/姓名/PIN、勾 💘）→ 她開網站 → 成員名冊輸 PIN
+  → 首頁就只看得到掛在 💘 的旅程。之後要 email 綁定再走 P2a 流程（Table Editor 填 email 即自動綁）。
+- 待辦（P6 後半，依賴 P2b）：email 邀請（service role）、RLS policy 引用 role、群組級 editor/viewer（需要再說）。
+
+### 2026-07-19 使用回饋打磨（第一輪）— ✅ 完成（已部署，p8 migration 已跑）
 > 使用者實際使用幾天後的回饋，全部完成：
 
 1. **記帳頁**：卡片編輯/複製/刪除鈕改常駐（原 hover 才顯示，手機看不到，違反 ux-standard）；

@@ -12,6 +12,7 @@ import type { Trip } from '@/lib/types';
 import { useTrips } from '@/features/trips/hooks/useTrips';
 import { useSaveTrip, useDeleteTrip, useUploadCover } from '@/features/trips/hooks/useTripMutations';
 import { useGroups, useGroupMembers } from '@/features/groups/hooks/useGroups';
+import { useCurrentMember } from '@/features/members/hooks/useCurrentMember';
 
 export default function HomePage() {
   // 伺服器資料改由 feature hooks 提供
@@ -42,6 +43,7 @@ export default function HomePage() {
 
   // 當前用戶所屬的群組
   const [myId, setMyId] = useState<string | null>(null);
+  const { isAdmin } = useCurrentMember(); // p9：admin 看全部旅程/群組
 
   useEffect(() => {
     setMyId(localStorage.getItem('my_member_id'));
@@ -77,19 +79,20 @@ export default function HomePage() {
     return groupMembers.filter(gm => gm.member_id === myId).map(gm => gm.group_id);
   }, [myId, groupMembers]);
 
-  // 群組篩選後的旅程
+  // 群組篩選後的旅程（p9）：admin 看全部；一般成員只看無群組（公開）或自己所屬群組的旅程；
+  // 未驗證身分者看不到旅程（去成員名冊輸入 PIN 或登入）
   const filteredTrips = useMemo(() => {
     let result = trips;
-    // 如果已登入，只顯示無群組（公開）或自己所屬群組的旅程
-    if (myId && myGroupIds.length > 0) {
-      result = result.filter(t => !t.group_id || myGroupIds.includes(t.group_id));
+    if (!isAdmin) {
+      if (!myId) result = [];
+      else result = result.filter(t => !t.group_id || myGroupIds.includes(t.group_id));
     }
     // 再用 Tab 篩選
     if (activeGroupFilter) {
       result = result.filter(t => t.group_id === activeGroupFilter);
     }
     return result;
-  }, [trips, myId, myGroupIds, activeGroupFilter]);
+  }, [trips, myId, isAdmin, myGroupIds, activeGroupFilter]);
 
   // 自動跳轉到進行中的旅程
   useEffect(() => {
@@ -105,11 +108,12 @@ export default function HomePage() {
 
   const getGroupForTrip = (groupId: string | null) => groups.find(g => g.id === groupId);
 
-  // 可選群組（根據用戶所屬）
+  // 可選群組（p9）：admin 全部；一般成員只有自己所屬的組；未驗證身分者無
   const availableGroups = useMemo(() => {
-    if (!myId || myGroupIds.length === 0) return groups;
+    if (isAdmin) return groups;
+    if (!myId) return [];
     return groups.filter(g => myGroupIds.includes(g.id));
-  }, [groups, myId, myGroupIds]);
+  }, [groups, myId, isAdmin, myGroupIds]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -245,8 +249,8 @@ export default function HomePage() {
             ) : filteredTrips.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🌍</div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>{activeGroupFilter ? '此群組還沒有旅程' : '還沒有旅程紀錄'}</h3>
-                <p className="text-sm mb-6" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>點擊右下角的 + 按鈕開始你的冒險！</p>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-ink-muted)' }}>{!myId && !isAdmin ? '請先驗證身分' : activeGroupFilter ? '此群組還沒有旅程' : '還沒有旅程紀錄'}</h3>
+                <p className="text-sm mb-6" style={{ color: 'var(--color-ink-muted)', opacity: 0.7 }}>{!myId && !isAdmin ? '到「成員名冊」輸入你的 PIN 碼（或側欄登入）後，就會看到你的旅程' : '點擊右下角的 + 按鈕開始你的冒險！'}</p>
               </div>
             ) : filteredTrips.map((trip) => {
               const status = getTripStatus(trip);

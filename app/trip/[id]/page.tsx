@@ -13,7 +13,7 @@ import { ItinerarySkeleton } from '@/components/Skeleton';
 import type { ItineraryItem } from '@/lib/types';
 import { Menu, Plus, MapPin, Edit2, Trash2, DownloadCloud, Link2, PenTool, Navigation, Map, Compass, Clock, Ticket, Bed, X } from 'lucide-react';
 import { useTrip } from '@/features/trips/hooks/useTrip';
-import { useMembers } from '@/features/members/hooks/useMembers';
+import { useTripMembers } from '@/features/members/hooks/useTripMembers';
 import { useItinerary } from '@/features/itinerary/hooks/useItinerary';
 import { useSaveItinerary, useDeleteItinerary, useUpdateMemberTicket } from '@/features/itinerary/hooks/useItineraryMutations';
 import DayRouteMap from '@/features/map/components/DayRouteMap';
@@ -27,7 +27,8 @@ export default function TripMasterPage() {
 
   // 伺服器資料改由 feature hooks 提供（useItinerary 內含 Realtime 訂閱）
   const { data: tripInfo } = useTrip(tripId);
-  const { data: members = [] } = useMembers();
+  // p9：票券名單限定為旅程所屬身分組的成員
+  const { data: members } = useTripMembers(tripId);
   const { data: itineraryBundle, isLoading: loading, refetch: refetchItinerary } = useItinerary(tripId);
   const data = useMemo(() => itineraryBundle?.items ?? [], [itineraryBundle]);
   const accommodations = itineraryBundle?.accommodations ?? [];
