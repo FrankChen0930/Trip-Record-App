@@ -1,8 +1,8 @@
 # STATUS — Travel Record App 重構進度與交接
 
-> 最後更新：2026-07-19（**使用回饋打磨第一輪**完成，程式就緒；
-> **待使用者：先在 Supabase 跑 `p8_accommodation_hours.sql` 再 push 部署**，否則住宿儲存會失敗。
-> 內容見「2026-07-19 使用回饋打磨」節。P2b 仍擱置等成員信箱到齊。）
+> 最後更新：2026-07-20（**P6 前半：成員角色 + 身分組可見性**已上線 `cfde22f`，p8/p9 migrations 皆已跑。
+> 豆腐=admin 可直接建成員/管身分組；成員只見同組成員；女友上車＝新增成員勾 💘 → 她輸 PIN。
+> P2b 仍擱置等成員信箱到齊；P6 後半（email 邀請、RLS 引用 role）依賴 P2b。）
 > 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
 > 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
 
@@ -248,7 +248,8 @@ features/<name>/
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
 
-### 2026-07-20 P6 前半：成員角色 + 身分組可見性 — ✅ 程式完成，**等 p9 migration 跑完才能部署**
+### 2026-07-20 P6 前半：成員角色 + 身分組可見性 — ✅ 完成（已部署 `cfde22f`；p9 migration 已跑，
+> REST 驗證：豆腐=admin、四旅程掛小港人、💘 含豆腐；home/members 部署 200）
 > 使用者需求：自己（豆腐）要有絕對掌控權、可直接建立成員（兩天後要跟女友出遊，對方還不在系統內）、
 > 成員只能看見同身分組的成員。⚠️ P2b 前這些都只有 UI 層效力（STATUS 既有註記），RLS 開啟後由 policy 補強制力。
 
