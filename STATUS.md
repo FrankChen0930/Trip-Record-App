@@ -248,7 +248,8 @@ features/<name>/
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
 
-### 2026-07-20 規劃頁打磨：凍結時間欄 + 主要交通工具 — ✅ 程式完成，**等 p10 migration 跑完才能部署**
+### 2026-07-20 規劃頁打磨：凍結時間欄 + 主要交通工具 — ✅ 完成（已上線 `bdf5aae`；p10 已跑，
+> REST 驗證 default_transport 欄位就位，使用者已自建「阿里山/嘉義」旅程）
 > 使用者回饋：(1) 行程表水平捲到 Day 3 時時間欄跟著消失、對不到時間；
 > (2) 這次出門開車，不想每張行程卡都手動把機車改汽車。
 
