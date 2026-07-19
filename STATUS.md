@@ -248,6 +248,22 @@ features/<name>/
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
 
+### 2026-07-20 Google 地圖清單匯入備選池 — ✅ 完成
+> 使用者需求：貼 Google Maps「已儲存清單」分享連結（maps.app.goo.gl/…）→ 整份清單倒進備選池。
+
+- **原理（無官方 API，內部端點反解）**：跟隨短連結重導向 → 從最終網址抽清單 token
+  （`!2s<token>!3e` 或 `/maps/placelists/list/<token>`）→ 打 `google.com/maps/preview/entitylist/getlist`
+  （公開分享清單**免登入**）→ 去掉 `)]}'` 前綴解析巢狀陣列：`root[4]`=清單名、`root[8]`=項目、
+  每項 `[2]`=名稱、`[3]`=使用者備註、`[1][4]`=地址、`[1][5][2..3]`=lat/lng。**沒有 ChIJ place_id**
+  （只有 CID/feature id），故匯入項 place_id=null，之後可用備選池既有「補定位」鈕補。
+  ⚠️ Google 改版格式就會壞——lib 內已包成單一友善錯誤，屆時重新抓一次頁面對欄位即可。
+- 程式：`lib/googleList.ts`（host 白名單防 SSRF + 解析）、`app/api/places/import-list`（POST {url}）、
+  plan 頁備選池 ListPlus 鈕 → Modal（貼連結→解析→勾選匯入，同名項預設不勾標「已在池中」、
+  全選/全取消、名稱含民宿/飯店等自動歸 accommodation 分類）。
+- 驗證：typecheck/build ✅、新程式 lint 0 問題（plan 頁剩 1 個 a2adda8 就存在的 set-state-in-effect）、
+  本機 next start 實測使用者實際清單（嘉義/阿里山 14 點）解析正確、非 Google 網域被擋。
+- 附帶：`bucketList` 包 useMemo（原每 render 新參考，讓下游 memo 失效）。
+
 ### 2026-07-20 P6 前半：成員角色 + 身分組可見性 — ✅ 完成（已部署 `cfde22f`；p9 migration 已跑，
 > REST 驗證：豆腐=admin、四旅程掛小港人、💘 含豆腐；home/members 部署 200）
 > 使用者需求：自己（豆腐）要有絕對掌控權、可直接建立成員（兩天後要跟女友出遊，對方還不在系統內）、

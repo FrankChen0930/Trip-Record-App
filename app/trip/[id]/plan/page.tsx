@@ -14,7 +14,7 @@ import {
 } from '@/features/plan/hooks/usePlanMutations';
 import { useConfirm } from '@/components/ConfirmDialog';
 import PlaceLocateField, { type PlaceCoord } from '@/features/suggestions/components/PlaceLocateField';
-import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown, Bed, Edit2, Link as LinkIcon, Crosshair, Star } from 'lucide-react';
+import { Menu, Navigation, CheckCircle2, Clock, Trash2, Plus, GripVertical, MapPin, Map, Compass, ChevronUp, ChevronDown, Bed, Edit2, Link as LinkIcon, Crosshair, Star, ListPlus } from 'lucide-react';
 import type { WishPlace } from '@/lib/types';
 import { useWishPlaces, wishStatus } from '@/features/wishlist/hooks/useWishPlaces';
 import Modal from '@/components/Modal';
@@ -229,7 +229,8 @@ export default function PlanPage() {
   const { data: planData } = usePlanData(tripId);
   const itinerary = planData?.itinerary ?? [];
   const accommodations = planData?.accommodations ?? [];
-  const bucketList = planData?.bucketList ?? [];
+  // 下游有 useMemo 依賴（bucketPlaceIds/bucketTitles），需要穩定的參考
+  const bucketList = useMemo(() => planData?.bucketList ?? [], [planData]);
   const assignBucket = useAssignBucket(tripId);
   const insertItinerary = useInsertItinerary(tripId);
   const removeItinerary = useRemoveItinerary(tripId);
@@ -279,6 +280,56 @@ export default function PlanPage() {
         lat: p.lat, lng: p.lng, place_id: p.place_id, address: p.address, rating: p.rating,
       });
       toast(`「${p.title}」已加入備選池`, 'success');
+    } catch (error) {
+      toast('匯入失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
+  };
+
+  // 從 Google Maps 已儲存清單匯入備選池（貼分享連結 → 解析 → 勾選匯入）
+  const [isGListOpen, setGListOpen] = useState(false);
+  const [glistUrl, setGlistUrl] = useState('');
+  const [glistLoading, setGlistLoading] = useState(false);
+  const [glistResult, setGlistResult] = useState<{ title: string; places: { name: string; address: string | null; lat: number | null; lng: number | null; note: string | null }[] } | null>(null);
+  const [glistChecked, setGlistChecked] = useState<boolean[]>([]);
+  const bucketTitles = useMemo(() => new Set(bucketList.map(b => b.title)), [bucketList]);
+
+  const closeGList = () => { setGListOpen(false); setGlistUrl(''); setGlistResult(null); setGlistChecked([]); };
+
+  const parseGList = async () => {
+    if (!glistUrl.trim()) { toast('請先貼上清單分享連結', 'warning'); return; }
+    setGlistLoading(true);
+    try {
+      const res = await fetch('/api/places/import-list', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: glistUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `解析失敗 (${res.status})`);
+      setGlistResult(data);
+      // 預設全勾，但已在備選池的（同名）不勾
+      setGlistChecked(data.places.map((p: { name: string }) => !bucketTitles.has(p.name)));
+    } catch (error) {
+      toast(error instanceof Error ? error.message : '解析失敗', 'error');
+    } finally {
+      setGlistLoading(false);
+    }
+  };
+
+  const importGList = async () => {
+    if (!glistResult) return;
+    const picked = glistResult.places.filter((_, i) => glistChecked[i]);
+    if (picked.length === 0) { toast('沒有勾選任何地點', 'warning'); return; }
+    try {
+      for (const p of picked) {
+        // 名稱像住宿的自動歸類（與行程卡語意色一致）
+        const isAcc = /民宿|飯店|旅店|酒店|營地|露營|B&B|HOTEL|HOSTEL/i.test(p.name);
+        await addBucket.mutateAsync({
+          trip_id: tripId, category: isAcc ? 'accommodation' : 'attraction', title: p.name,
+          note: p.note, link: null, lat: p.lat, lng: p.lng, place_id: null, address: p.address, rating: null,
+        });
+      }
+      toast(`已匯入 ${picked.length} 個地點到備選池`, 'success');
+      closeGList();
     } catch (error) {
       toast('匯入失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
@@ -629,6 +680,9 @@ export default function PlanPage() {
                 <button onClick={() => setImportOpen(true)} className="w-8 h-8 flex items-center justify-center bg-white border border-[#D8EBE3] text-[var(--color-primary-strong)] rounded-lg shadow-sm hover:bg-[var(--color-primary-soft)] transition" title="從探索清單匯入">
                   <Compass className="w-4 h-4" />
                 </button>
+                <button onClick={() => setGListOpen(true)} className="w-8 h-8 flex items-center justify-center bg-white border border-[#D8EBE3] text-[var(--color-primary-strong)] rounded-lg shadow-sm hover:bg-[var(--color-primary-soft)] transition" title="匯入 Google 地圖清單">
+                  <ListPlus className="w-4 h-4" />
+                </button>
                 <button onClick={() => setAddOpen(true)} className="w-8 h-8 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-lg shadow-sm hover:bg-[var(--color-primary-strong)] transition" title="手動新增">
                   <Plus className="w-4 h-4" />
                 </button>
@@ -753,6 +807,64 @@ export default function PlanPage() {
               </div>
             );
           })}
+        </div>
+      </Modal>
+
+      {/* 匯入 Google 地圖清單 Modal */}
+      <Modal isOpen={isGListOpen} onClose={closeGList} title="匯入 Google 地圖清單">
+        <div className="space-y-4">
+          <p className="text-[11px] text-[var(--color-ink-muted)] font-bold leading-relaxed">
+            在 Google Maps 打開你的「已儲存清單」→ 分享 → 複製連結貼到這裡（清單要設為公開分享）
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={glistUrl} onChange={e => setGlistUrl(e.target.value)}
+              placeholder="https://maps.app.goo.gl/…"
+              className="flex-1 min-w-0 bg-[var(--color-bg-page)] p-3.5 rounded-xl outline-none text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+            />
+            <button onClick={parseGList} disabled={glistLoading} className="flex-shrink-0 px-4 py-3.5 bg-[var(--color-primary)] text-white rounded-xl font-bold text-xs hover:bg-[var(--color-primary-strong)] disabled:opacity-50 transition">
+              {glistLoading ? '解析中…' : '解析'}
+            </button>
+          </div>
+
+          {glistResult && (
+            <>
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-sm text-[var(--color-ink)] truncate">{glistResult.title}</h4>
+                <button
+                  onClick={() => setGlistChecked(prev => prev.every(Boolean) ? prev.map(() => false) : prev.map(() => true))}
+                  className="flex-shrink-0 text-[10px] font-black text-[var(--color-primary-strong)] px-2 py-1 rounded-lg hover:bg-[var(--color-primary-soft)] transition"
+                >
+                  {glistChecked.every(Boolean) ? '全部取消' : '全選'}
+                </button>
+              </div>
+              <div className="space-y-1.5 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                {glistResult.places.map((p, i) => {
+                  const dup = bucketTitles.has(p.name);
+                  return (
+                    <label key={i} className={`flex items-center gap-2.5 p-3 bg-white border border-[var(--color-border-hairline)] rounded-xl cursor-pointer hover:border-[#9BDCC4] transition ${dup ? 'opacity-60' : ''}`}>
+                      <input
+                        type="checkbox" checked={glistChecked[i] ?? false}
+                        onChange={() => setGlistChecked(prev => prev.map((c, j) => j === i ? !c : c))}
+                        className="w-4 h-4 accent-[var(--color-primary)] flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs text-[var(--color-ink)] truncate flex items-center gap-1.5">
+                          <span className="truncate">{p.name}</span>
+                          {p.lat != null && <MapPin className="w-3 h-3 text-[var(--color-primary)] flex-shrink-0" />}
+                          {dup && <span className="text-[9px] font-black text-[var(--color-ink-muted)] flex-shrink-0">已在池中</span>}
+                        </p>
+                        {p.address && <p className="text-[10px] text-[var(--color-ink-muted)] truncate mt-0.5">{p.address}</p>}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <button onClick={importGList} disabled={addBucket.isPending} className="w-full py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg hover:bg-[var(--color-primary-strong)] disabled:opacity-50 transition">
+                {addBucket.isPending ? '匯入中…' : `匯入 ${glistChecked.filter(Boolean).length} 個地點`}
+              </button>
+            </>
+          )}
         </div>
       </Modal>
 
