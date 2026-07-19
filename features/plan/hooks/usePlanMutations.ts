@@ -6,13 +6,14 @@ import type { PlanBundle } from './usePlanData';
 const planKey = (tripId: string | undefined) => ['plan', tripId];
 
 // 拖曳備選項目到時間格：樂觀地把它移進行程、移出備選池，再寫入 DB。
-export function useAssignBucket(tripId: string | undefined) {
+// defaultTransport：旅程主要交通工具（p10，trips.default_transport）
+export function useAssignBucket(tripId: string | undefined, defaultTransport = '機車') {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: { bucketItem: BucketItem; day: number; time: string }) => {
       const { error: insErr } = await planApi.insertItinerary({
         trip_id: tripId, day: vars.day, start_time: vars.time, location: vars.bucketItem.title,
-        transport_type: '機車', item_type: 'activity',
+        transport_type: defaultTransport, item_type: 'activity',
         note: vars.bucketItem.note || null, map_url: vars.bucketItem.link || null,
         // 備選池項目若已定位，座標一併帶進行程（P5a）
         lat: vars.bucketItem.lat ?? null, lng: vars.bucketItem.lng ?? null,
@@ -27,7 +28,7 @@ export function useAssignBucket(tripId: string | undefined) {
         if (!old) return old;
         const tempItem: ItineraryItem = {
           id: `temp-${Date.now()}`, trip_id: tripId as string, day: vars.day, start_time: vars.time,
-          end_time: null, location: vars.bucketItem.title, transport_type: '機車', item_type: 'activity',
+          end_time: null, location: vars.bucketItem.title, transport_type: defaultTransport, item_type: 'activity',
           note: vars.bucketItem.note ?? null, map_url: vars.bucketItem.link ?? null,
           lat: vars.bucketItem.lat ?? null, lng: vars.bucketItem.lng ?? null,
           place_id: vars.bucketItem.place_id ?? null,
@@ -43,17 +44,37 @@ export function useAssignBucket(tripId: string | undefined) {
   });
 }
 
-export function useInsertItinerary(tripId: string | undefined) {
+export function useInsertItinerary(tripId: string | undefined, defaultTransport = '機車') {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: { day: number; time: string; title: string }) => {
       const { error } = await planApi.insertItinerary({
         trip_id: tripId, day: vars.day, start_time: vars.time, location: vars.title,
-        item_type: 'activity', transport_type: '機車',
+        item_type: 'activity', transport_type: defaultTransport,
       });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: planKey(tripId) }),
+  });
+}
+
+// p10：設定旅程主要交通工具（可選擇同時套用到現有全部行程卡）
+export function useSetDefaultTransport(tripId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { transport: string; applyToExisting: boolean }) => {
+      const { error } = await planApi.setTripDefaultTransport(tripId, vars.transport);
+      if (error) throw error;
+      if (vars.applyToExisting) {
+        const { error: e2 } = await planApi.updateAllItineraryTransport(tripId, vars.transport);
+        if (e2) throw e2;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+      queryClient.invalidateQueries({ queryKey: planKey(tripId) });
+      queryClient.invalidateQueries({ queryKey: ['itinerary', tripId] });
+    },
   });
 }
 

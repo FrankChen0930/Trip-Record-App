@@ -248,7 +248,21 @@ features/<name>/
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
 
-### 2026-07-20 Google 地圖清單匯入備選池 — ✅ 完成
+### 2026-07-20 規劃頁打磨：凍結時間欄 + 主要交通工具 — ✅ 程式完成，**等 p10 migration 跑完才能部署**
+> 使用者回饋：(1) 行程表水平捲到 Day 3 時時間欄跟著消失、對不到時間；
+> (2) 這次出門開車，不想每張行程卡都手動把機車改汽車。
+
+- **凍結時間欄**：時間欄 `sticky left-0 z-30`、天數列 `z-10→z-40`、左上角落格 `sticky left-0`（雙向凍結）、
+  格內 + 鈕 `z-50→z-20`（原本就會蓋到 sticky 天數列，順手修）。
+- **主要交通工具（p10）**：`trips.default_transport`（預設'機車'，**使用者要先跑
+  `supabase/migrations/p10_trip_default_transport.sql`**）。
+  規劃頁 header 新增「主要交通：X」鈕 → Modal 選 機車/汽車/火車/高鐵/步行 +
+  可勾「同時套用到現有 N 張行程卡」（bulk update trip_itinerary.transport_type）。
+  預設值吃進：`useAssignBucket`/`useInsertItinerary`（帶第二參數 defaultTransport）與
+  行程主頁新增表單 resetForm。個別卡片編輯仍可改。
+- 驗證：typecheck ✅ / test 4/4 ✅ / build ✅ / lint 9 個全為既有問題（新程式 0）。
+
+### 2026-07-20 Google 地圖清單匯入備選池 — ✅ 完成（已上線 `87960b8`，正式站實測 14 點解析通過）
 > 使用者需求：貼 Google Maps「已儲存清單」分享連結（maps.app.goo.gl/…）→ 整份清單倒進備選池。
 
 - **原理（無官方 API，內部端點反解）**：跟隨短連結重導向 → 從最終網址抽清單 token

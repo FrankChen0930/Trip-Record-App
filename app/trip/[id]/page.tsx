@@ -140,7 +140,9 @@ export default function TripMasterPage() {
 
   const resetForm = () => {
     setEditingId(null); setLocation(''); setNote(''); setMapUrl(''); setSpotUrls({});
-    setStartTime('08:00'); setEndTime(''); setTransport('機車'); setItemType('activity');
+    setStartTime('08:00'); setEndTime('');
+    setTransport(tripInfo?.default_transport ?? '機車'); // p10：預設帶旅程主要交通工具
+    setItemType('activity');
     setCoord(null);
   };
 

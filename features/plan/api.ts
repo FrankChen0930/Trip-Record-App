@@ -35,6 +35,12 @@ export const planApi = {
   removeBucket: (id: string) =>
     supabase.from('trip_bucket_list').delete().eq('id', id),
 
+  // p10：旅程主要交通工具
+  setTripDefaultTransport: (tripId: string | undefined, transport: string) =>
+    supabase.from('trips').update({ default_transport: transport }).eq('id', tripId as string),
+  updateAllItineraryTransport: (tripId: string | undefined, transport: string) =>
+    supabase.from('trip_itinerary').update({ transport_type: transport }).eq('trip_id', tripId as string),
+
   insertAccommodation: (row: AccommodationFields & { trip_id: string | undefined; day: number }) =>
     supabase.from('trip_accommodations').insert([row]),
   updateAccommodation: (id: string, data: AccommodationFields) =>

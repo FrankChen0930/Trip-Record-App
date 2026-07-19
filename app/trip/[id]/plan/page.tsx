@@ -11,6 +11,7 @@ import { usePlanData } from '@/features/plan/hooks/usePlanData';
 import {
   useAssignBucket, useInsertItinerary, useRemoveItinerary, useAddBucket, useSaveAccommodation,
   useMoveItinerary, useUnassignItinerary, useUpdateItineraryItem, useUpdateBucketItem, useRemoveBucketItem,
+  useSetDefaultTransport,
 } from '@/features/plan/hooks/usePlanMutations';
 import { useConfirm } from '@/components/ConfirmDialog';
 import PlaceLocateField, { type PlaceCoord } from '@/features/suggestions/components/PlaceLocateField';
@@ -131,7 +132,8 @@ function DroppableTimeCell({ dayNum, timeStr, items, onRemoveItem, onInsert, onE
   return (
     <div ref={setNodeRef} className={`h-28 border-b border-r border-[#E8F3EE] p-1.5 relative group ${isOver ? 'bg-[var(--color-primary-soft)]/50 ring-2 ring-inset ring-[var(--color-primary)]' : 'bg-transparent'} transition-colors flex flex-col gap-1 overflow-y-auto custom-scrollbar`}>
       {/* Insert Button（常駐，行動裝置沒有 hover） */}
-      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white shadow-md border border-[#E8F3EE] flex items-center justify-center text-[var(--color-primary)] hover:text-white hover:bg-[var(--color-primary)] opacity-40 group-hover:opacity-100 transition-all z-50">
+      {/* z-20：要低於凍結的時間欄（z-30）與天數列（z-40），否則捲動時會蓋在上面 */}
+      <button onClick={() => onInsert(dayNum, timeStr)} className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white shadow-md border border-[#E8F3EE] flex items-center justify-center text-[var(--color-primary)] hover:text-white hover:bg-[var(--color-primary)] opacity-40 group-hover:opacity-100 transition-all z-20">
         <Plus className="w-3 h-3"/>
       </button>
 
@@ -231,8 +233,10 @@ export default function PlanPage() {
   const accommodations = planData?.accommodations ?? [];
   // 下游有 useMemo 依賴（bucketPlaceIds/bucketTitles），需要穩定的參考
   const bucketList = useMemo(() => planData?.bucketList ?? [], [planData]);
-  const assignBucket = useAssignBucket(tripId);
-  const insertItinerary = useInsertItinerary(tripId);
+  // p10：新卡預設帶旅程主要交通工具
+  const defaultTransport = tripInfo?.default_transport ?? '機車';
+  const assignBucket = useAssignBucket(tripId, defaultTransport);
+  const insertItinerary = useInsertItinerary(tripId, defaultTransport);
   const removeItinerary = useRemoveItinerary(tripId);
   const addBucket = useAddBucket(tripId);
   // P5d: 雙向拖曳與卡片編輯
@@ -282,6 +286,23 @@ export default function PlanPage() {
       toast(`「${p.title}」已加入備選池`, 'success');
     } catch (error) {
       toast('匯入失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
+    }
+  };
+
+  // p10：主要交通工具設定
+  const setDefaultTransport = useSetDefaultTransport(tripId);
+  const [isTransportOpen, setTransportOpen] = useState(false);
+  const [applyTransportToExisting, setApplyTransportToExisting] = useState(false);
+  const transportEmoji: Record<string, string> = { '機車': '🛵', '汽車': '🚗', '火車': '🚆', '高鐵': '🚄', '步行': '🚶' };
+
+  const pickTransport = async (transport: string) => {
+    try {
+      await setDefaultTransport.mutateAsync({ transport, applyToExisting: applyTransportToExisting });
+      toast(applyTransportToExisting ? `主要交通已設為${transport}，並套用到現有行程卡` : `主要交通已設為${transport}，之後的新行程卡都會預設${transport}`, 'success');
+      setTransportOpen(false);
+      setApplyTransportToExisting(false);
+    } catch (error) {
+      toast('設定失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error');
     }
   };
 
@@ -585,6 +606,14 @@ export default function PlanPage() {
               <input type="checkbox" checked={showDayZero} onChange={e => handleToggleDayZero(e.target.checked)} className="accent-[var(--color-primary)]" />
               從 Day 0 開始計算
             </label>
+            {/* p10：主要交通工具（新行程卡的預設） */}
+            <button
+              onClick={() => setTransportOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-bold text-[var(--color-ink-muted)] bg-[var(--color-bg-page)] px-3 py-1.5 rounded-lg border border-[#E8F3EE] hover:bg-[var(--color-primary-soft)] transition-colors"
+              title="設定這趟旅程的主要交通工具（新行程卡預設值）"
+            >
+              {transportEmoji[defaultTransport] ?? '🛵'} 主要交通：{defaultTransport}
+            </button>
           </div>
         </div>
         <button onClick={() => router.push(`/trip/${tripId}`)} className="bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] px-4 py-2 rounded-xl font-bold text-xs hover:bg-[#B9E7D6] transition-colors flex items-center gap-1 shadow-sm">
@@ -611,9 +640,10 @@ export default function PlanPage() {
             
             <div className="bg-white border text-[var(--color-ink)] border-[#D8EBE3] rounded-xl shadow-sm flex flex-col w-max">
               
-              {/* Header Row (Days) */}
-              <div className="flex border-b border-[#D8EBE3] bg-[var(--color-bg-page)] sticky top-0 z-10">
-                 <div className="w-20 border-r border-[#D8EBE3] flex-shrink-0 flex items-center justify-center">
+              {/* Header Row (Days)：sticky top；z 要壓過時間欄（z-30）與格內元素 */}
+              <div className="flex border-b border-[#D8EBE3] bg-[var(--color-bg-page)] sticky top-0 z-40">
+                 {/* 左上角落格：跟時間欄一起凍結在左側 */}
+                 <div className="w-20 border-r border-[#D8EBE3] flex-shrink-0 flex items-center justify-center sticky left-0 z-10 bg-[var(--color-bg-page)]">
                     <Clock className="w-5 h-5 text-[#C4CFC9]" />
                  </div>
                  {days.map(d => (
@@ -626,8 +656,8 @@ export default function PlanPage() {
 
               {/* Grid Body */}
               <div className="flex relative">
-                 {/* Y-Axis: Time Slots */}
-                 <div className="w-20 flex-shrink-0 bg-white z-0 flex flex-col border-r border-[#D8EBE3]">
+                 {/* Y-Axis: Time Slots（sticky left：水平捲到 Day 3 也對得到時間） */}
+                 <div className="w-20 flex-shrink-0 bg-white sticky left-0 z-30 flex flex-col border-r border-[#D8EBE3]">
                     <div className="h-8 flex border-b border-[#E8F3EE] bg-[var(--color-bg-page)]">
                         <button onClick={() => setStartHour(Math.max(0, startHour - 1))} className="flex-1 hover:bg-[var(--color-primary-soft)] flex items-center justify-center text-[var(--color-ink-muted)] transition-colors" title="增加更早時間"><ChevronUp className="w-4 h-4"/></button>
                         <button onClick={() => setStartHour(Math.min(23, startHour + 1))} className="flex-1 hover:bg-[var(--color-primary-soft)] flex items-center justify-center text-[var(--color-ink-muted)] transition-colors border-l border-[#E8F3EE]" title="刪除時間列"><Trash2 className="w-3 h-3"/></button>
@@ -807,6 +837,35 @@ export default function PlanPage() {
               </div>
             );
           })}
+        </div>
+      </Modal>
+
+      {/* p10：主要交通工具 Modal */}
+      <Modal isOpen={isTransportOpen} onClose={() => { setTransportOpen(false); setApplyTransportToExisting(false); }} title="主要交通工具">
+        <div className="space-y-4">
+          <p className="text-[11px] text-[var(--color-ink-muted)] font-bold leading-relaxed">
+            之後拖入或新增的行程卡都會預設這個交通工具（個別卡片仍可在編輯時改）
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[var(--color-ink)] bg-[var(--color-bg-page)] p-3.5 rounded-xl border border-[#E8F3EE] hover:bg-[var(--color-primary-soft)] transition-colors">
+            <input type="checkbox" checked={applyTransportToExisting} onChange={e => setApplyTransportToExisting(e.target.checked)} className="w-4 h-4 accent-[var(--color-primary)]" />
+            同時套用到現有的 {itinerary.length} 張行程卡
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['機車', '汽車', '火車', '高鐵', '步行'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => pickTransport(t)}
+                disabled={setDefaultTransport.isPending}
+                className={`flex items-center justify-center gap-2 p-4 rounded-xl font-black text-sm transition-all disabled:opacity-50 ${
+                  defaultTransport === t
+                    ? 'bg-[var(--color-primary)] text-white shadow-md'
+                    : 'bg-[var(--color-bg-page)] text-[var(--color-ink)] border border-[#E8F3EE] hover:bg-[var(--color-primary-soft)]'
+                }`}
+              >
+                <span className="text-lg">{transportEmoji[t]}</span> {t}
+              </button>
+            ))}
+          </div>
         </div>
       </Modal>
 

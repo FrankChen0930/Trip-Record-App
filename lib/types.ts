@@ -7,6 +7,7 @@ export interface Trip {
   end_date: string | null;
   cover_url: string | null;
   group_id: string | null;
+  default_transport?: string; // p10：新行程卡的預設交通工具（機車/汽車/火車/高鐵/步行）
   created_at?: string;
 }
 
