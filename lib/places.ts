@@ -56,6 +56,27 @@ export async function placeBusinessStatus(placeId: string): Promise<string | nul
   return data.businessStatus ?? null;
 }
 
+// 營業時間：Place Details 取 regularOpeningHours.weekdayDescriptions。
+// 此欄位屬較高價 SKU，前端拿到後會永久快取進 trip_itinerary.opening_hours，每個地點只查一次。
+export async function placeOpeningHours(placeId: string): Promise<string[] | null> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error('GOOGLE_PLACES_API_KEY 未設定');
+
+  const res = await fetch(`${PLACES_ENDPOINT}/places/${encodeURIComponent(placeId)}?languageCode=zh-TW`, {
+    headers: {
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'id,regularOpeningHours.weekdayDescriptions',
+    },
+  });
+  if (res.status === 404) return null; // 地點已從 Google 下架
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Places Details ${res.status}: ${detail.slice(0, 300)}`);
+  }
+  const data: { regularOpeningHours?: { weekdayDescriptions?: string[] } } = await res.json();
+  return data.regularOpeningHours?.weekdayDescriptions ?? null;
+}
+
 export async function placesFetch(
   path: 'places:searchText' | 'places:searchNearby',
   body: Record<string, unknown>

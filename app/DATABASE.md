@@ -25,6 +25,22 @@
 | map_url | text | Google Maps 連結 |
 | lat / lng | float8 | 地圖座標（P5a，內建地圖用；可為空） |
 | place_id | text | Google Places ID（P5b；可為空） |
+| opening_hours | jsonb | 營業時間快取（2026-07-19 p8）：`{"weekdayDescriptions": [...]}`；空陣列＝查過但無資訊；null＝尚未查 |
+
+2b. trip_accommodations (每日住宿卡)
+每天一筆的專屬住宿資訊（顯示在行程主頁每天最下方，編輯入口在規劃頁）。
+| 欄位名 | 型別 | 說明 |
+| :--- | :--- | :--- |
+| id | uuid | 主鍵 |
+| trip_id | uuid | 關聯到 trips.id |
+| day | int4 | 第幾天 |
+| name | text | 住宿名稱 |
+| map_url | text | 地圖連結 |
+| booking_url | text | 訂房網連結 |
+| check_in | time | 入住時間（2026-07-19 p8 新增） |
+| check_out | time | 退房時間（2026-07-19 p8 新增） |
+| note | text | 備註 / 注意事項（欄位早已存在，2026-07-19 起前端開放編輯） |
+| created_at | timestamptz | 建立時間 |
 
 3. trip_photos (影像紀錄)
 儲存上傳到 Storage 的照片索引。

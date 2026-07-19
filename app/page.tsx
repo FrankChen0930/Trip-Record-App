@@ -132,7 +132,7 @@ export default function HomePage() {
       group_id: selectedGroupId || null,
     };
     try {
-      await saveTrip.mutateAsync({ id: editingId, payload, startDate, endDate });
+      await saveTrip.mutateAsync({ id: editingId, payload });
       toast(editingId ? '旅程變更已儲存' : '新旅程已開啟！', 'success');
       closeModal();
     } catch (error) {

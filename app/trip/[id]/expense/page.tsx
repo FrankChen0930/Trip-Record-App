@@ -377,11 +377,16 @@ export default function TripExpensePage() {
                     ) : (
                        <p className="text-[10px] text-[var(--color-ink-muted)] font-medium">參與：{exp.participants.join(', ')}</p>
                     )}
-                    {exp.split_type === 'custom' && !exp.is_transfer && <p className="text-[9px] text-orange-500 font-bold mt-0.5">自訂分攤</p>}
+                    {exp.split_type === 'custom' && !exp.is_transfer && exp.split_details && (
+                      <p className="text-[9px] text-orange-500 font-bold mt-0.5">
+                        自訂分攤：{Object.entries(exp.split_details).filter(([, v]) => Number(v) > 0).map(([name, v]) => `${name} $${Number(v).toFixed(0)}`).join('・')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-xl text-[var(--color-ink)] mr-2">${typeof exp.amount === 'number' ? exp.amount.toFixed(0) : parseFloat(String(exp.amount)).toFixed(0)}</span>
-                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* 操作鈕常駐（行動裝置沒有 hover） */}
+                    <div className="flex flex-col gap-1">
                       <button onClick={() => handleEditClick(exp)} className="p-1.5 bg-[var(--color-bg-page)] rounded-lg text-[var(--color-ink-muted)] hover:text-[var(--color-primary-strong)] hover:bg-[var(--color-primary-soft)] transition-all" title="編輯">
                         <Edit2 className="w-4 h-4" />
                       </button>

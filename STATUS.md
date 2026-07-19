@@ -1,7 +1,8 @@
 # STATUS — Travel Record App 重構進度與交接
 
-> 最後更新：2026-07-17（**P5 地圖階段全部收尾**：P5a/b/d/e + 探索清單 + 分享入口已上線
-> `2edcb7c`，migrations 已跑、部署驗證 200。剩 IG 分享待使用者實測。下一階段候選見文末「下一步」。）
+> 最後更新：2026-07-19（**使用回饋打磨第一輪**完成，程式就緒；
+> **待使用者：先在 Supabase 跑 `p8_accommodation_hours.sql` 再 push 部署**，否則住宿儲存會失敗。
+> 內容見「2026-07-19 使用回饋打磨」節。P2b 仍擱置等成員信箱到齊。）
 > 用途：任何新的 Claude / Claude Code session 讀這份就能接手，不必重問。
 > 完整藍圖見 `REDESIGN_ARCHITECTURE.md`；Auth/RLS 步驟見 `P2_AUTH_RLS_RUNBOOK.md`。
 
@@ -246,6 +247,28 @@ features/<name>/
   之後 IG 分享選單就會出現本 App。**iOS**：Safari 不支援 share target，
   需建捷徑（接收 URL → 開啟 `https://trip-record-app.vercel.app/places?shared_url=[捷徑輸入]`）。
 - 注意：share target 只在**部署版**生效（PWA 需 HTTPS 安裝）。
+
+### 2026-07-19 使用回饋打磨（第一輪）— ✅ 程式完成，**等 p8 migration 跑完才能部署**
+> 使用者實際使用幾天後的回饋，全部完成：
+
+1. **記帳頁**：卡片編輯/複製/刪除鈕改常駐（原 hover 才顯示，手機看不到，違反 ux-standard）；
+   自訂分帳卡片直接顯示各人金額（原本要點編輯才看得到）。
+2. **Modal 全域修**：`.modal-content` 加 `max-height: calc(100dvh - 2rem)` + `overflow-y: auto`——
+   自訂分帳成員多時表單過長，原本超出螢幕且整頁鎖捲動（body overflow hidden）會卡死。
+3. **建立旅程不再自動生成每日 21:00「🏨 預計住宿點」預設格**（useSaveTrip 移除、tripsApi.insertItinerary 刪除）；
+   並已用 anon REST 清掉 DB 裡 618 筆未動過的舊預設格（location+自動備註都原樣才刪，Content-Range 618/驗證 0 筆殘留）。
+4. **住宿卡升級**：`trip_accommodations` 加 `check_in`/`check_out`（p8 migration），`note` 欄位開放編輯；
+   規劃頁 AccommodationCell 表單新增入住/退房時間+備註，行程主頁住宿卡顯示三者。
+5. **行程卡營業時間**（有 place_id 才有）：`lib/places.ts` `placeOpeningHours()` +
+   `app/api/places/hours` 代理（FieldMask 只取 `regularOpeningHours.weekdayDescriptions`，zh-TW）；
+   `features/itinerary/hooks/useOpeningHours.ts` 第一次顯示時查一次 → **寫回 `trip_itinerary.opening_hours` 永久快取**
+   （空陣列＝查過但無資訊，不重查；控制 Google 配額，每地點一生只查一次）；
+   `features/itinerary/components/OpeningHours.tsx`：手機摺疊成一行今日營業時間（點擊展開整週）、md 以上直接全展開、今日高亮。
+   已實測 Google 回傳（友利火鍋，中文星期格式正常）。
+- 驗證：typecheck ✅ / test 4/4 ✅ / build ✅（/api/places/hours 已註冊）/ 新改動 lint 0 問題。
+- **部署順序（重要）**：先在 Supabase SQL Editor 跑 `supabase/migrations/p8_accommodation_hours.sql`
+  （加 `trip_accommodations.check_in/check_out` 與 `trip_itinerary.opening_hours`），再 push 部署；
+  順序反了住宿儲存與營業時間快取寫回都會因欄位不存在而報錯。
 
 ### 🏁 P5 階段收尾（2026-07-17）
 - 全部上線：commit `2edcb7c`（28 檔、+2122 行）push → Vercel 自動部署，`/places` 部署驗證 200。

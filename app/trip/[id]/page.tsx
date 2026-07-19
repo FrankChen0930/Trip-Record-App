@@ -17,6 +17,7 @@ import { useMembers } from '@/features/members/hooks/useMembers';
 import { useItinerary } from '@/features/itinerary/hooks/useItinerary';
 import { useSaveItinerary, useDeleteItinerary, useUpdateMemberTicket } from '@/features/itinerary/hooks/useItineraryMutations';
 import DayRouteMap from '@/features/map/components/DayRouteMap';
+import OpeningHours from '@/features/itinerary/components/OpeningHours';
 import { useDayTravelTimes } from '@/features/map/hooks/useOsrmRoute';
 import PlaceLocateField, { type PlaceCoord } from '@/features/suggestions/components/PlaceLocateField';
 
@@ -375,6 +376,9 @@ export default function TripMasterPage() {
 
                             {item.note && <p className="text-xs text-[var(--color-ink-muted)] mb-4 italic leading-relaxed">{item.note}</p>}
 
+                            {/* 營業時間（有 Google 定位才顯示；手機摺疊、桌機展開） */}
+                            <OpeningHours item={item} />
+
                             {isTicket && (
                               <div className="space-y-2 pt-4 border-t border-amber-200/50">
                                 {memberNicknames.map(name => {
@@ -419,8 +423,15 @@ export default function TripMasterPage() {
                   </div>
                   <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/90 p-6 rounded-xl border border-indigo-100 shadow-[0_8px_30px_rgba(99,102,241,0.06)] relative overflow-hidden">
                     <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-100/50 px-3 py-1 rounded-full mb-3 inline-block">本日住宿 Accommodation</span>
-                    <h3 className="text-xl font-black text-indigo-950 mb-4">{todaysAcc.name}</h3>
-                    <div className="flex gap-3">
+                    <h3 className="text-xl font-black text-indigo-950 mb-2">{todaysAcc.name}</h3>
+                    {(todaysAcc.check_in || todaysAcc.check_out) && (
+                      <div className="flex gap-2 mb-2">
+                        {todaysAcc.check_in && <span className="flex items-center gap-1 text-[10px] font-black text-indigo-600 bg-white/70 px-2.5 py-1 rounded-lg border border-indigo-100"><Clock className="w-3 h-3" /> 入住 {todaysAcc.check_in.substring(0, 5)}</span>}
+                        {todaysAcc.check_out && <span className="flex items-center gap-1 text-[10px] font-black text-indigo-600 bg-white/70 px-2.5 py-1 rounded-lg border border-indigo-100"><Clock className="w-3 h-3" /> 退房 {todaysAcc.check_out.substring(0, 5)}</span>}
+                      </div>
+                    )}
+                    {todaysAcc.note && <p className="text-xs text-indigo-900/70 leading-relaxed mb-3 whitespace-pre-wrap">{todaysAcc.note}</p>}
+                    <div className="flex gap-3 mt-2">
                       {todaysAcc.map_url && <a href={todaysAcc.map_url} target="_blank" className="flex items-center gap-1.5 px-4 py-2 bg-white text-indigo-600 font-bold text-xs rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all"><MapPin className="w-4 h-4"/> 地圖導航</a>}
                       {todaysAcc.booking_url && <a href={todaysAcc.booking_url} target="_blank" className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white font-bold text-xs rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all"><Link2 className="w-4 h-4"/> 訂房資訊</a>}
                     </div>

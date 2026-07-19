@@ -35,6 +35,9 @@ export const itineraryApi = {
     supabase.from('trip_itinerary').update(payload).eq('id', id),
   remove: (id: string) =>
     supabase.from('trip_itinerary').delete().eq('id', id),
+  // 營業時間快取寫回（見 useOpeningHours；空陣列＝查過但該地點沒資訊）
+  updateOpeningHours: (id: string, opening_hours: { weekdayDescriptions: string[] }) =>
+    supabase.from('trip_itinerary').update({ opening_hours }).eq('id', id),
   upsertTicketStatus: (status: TicketStatusInput) =>
     supabase.from('trip_member_ticket_status').upsert(status, { onConflict: 'itinerary_id,member_name' }),
 };

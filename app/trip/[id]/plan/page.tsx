@@ -153,17 +153,23 @@ function AccommodationCell({ day, data, tripId }: { day: number, data?: TripAcco
   const [name, setName] = useState(data?.name || '');
   const [mapUrl, setMapUrl] = useState(data?.map_url || '');
   const [bookingUrl, setBookingUrl] = useState(data?.booking_url || '');
+  const [checkIn, setCheckIn] = useState(data?.check_in?.substring(0, 5) || '');
+  const [checkOut, setCheckOut] = useState(data?.check_out?.substring(0, 5) || '');
+  const [note, setNote] = useState(data?.note || '');
 
   useEffect(() => {
     setName(data?.name || '');
     setMapUrl(data?.map_url || '');
     setBookingUrl(data?.booking_url || '');
+    setCheckIn(data?.check_in?.substring(0, 5) || '');
+    setCheckOut(data?.check_out?.substring(0, 5) || '');
+    setNote(data?.note || '');
   }, [data]);
 
   const handleSave = async () => {
     if (!name) return;
     try {
-      await saveAccommodation.mutateAsync({ id: data?.id ?? null, day, name, mapUrl, bookingUrl });
+      await saveAccommodation.mutateAsync({ id: data?.id ?? null, day, name, mapUrl, bookingUrl, checkIn, checkOut, note });
       toast('住宿已更新', 'success');
       setIsEditing(false);
     } catch {
@@ -182,6 +188,13 @@ function AccommodationCell({ day, data, tripId }: { day: number, data?: TripAcco
            <input value={name} onChange={e => setName(e.target.value)} placeholder="住宿名稱" className="text-xs p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400" />
            <input value={mapUrl} onChange={e => setMapUrl(e.target.value)} placeholder="網址 (地圖)" className="text-[10px] p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400" />
            <input value={bookingUrl} onChange={e => setBookingUrl(e.target.value)} placeholder="網址 (訂房網)" className="text-[10px] p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400" />
+           <div className="flex items-center gap-1">
+             <label className="text-[9px] font-bold text-indigo-400 w-7 flex-shrink-0">入住</label>
+             <input type="time" value={checkIn} onChange={e => setCheckIn(e.target.value)} className="flex-1 min-w-0 text-[10px] p-1.5 rounded-lg border border-indigo-100 outline-none focus:ring-1 focus:ring-indigo-400" />
+             <label className="text-[9px] font-bold text-indigo-400 w-7 flex-shrink-0 text-right">退房</label>
+             <input type="time" value={checkOut} onChange={e => setCheckOut(e.target.value)} className="flex-1 min-w-0 text-[10px] p-1.5 rounded-lg border border-indigo-100 outline-none focus:ring-1 focus:ring-indigo-400" />
+           </div>
+           <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="備註 / 注意事項（門禁、停車、早餐…）" rows={2} className="text-[10px] p-2 rounded-lg border border-indigo-100 w-full outline-none focus:ring-1 focus:ring-indigo-400 resize-none" />
            <div className="flex gap-1 mt-1">
              <button onClick={handleSave} className="flex-1 py-1.5 bg-indigo-600 text-white font-bold text-[10px] rounded-lg hover:bg-indigo-700 shadow-sm transition">儲存</button>
              {(isEditing && data?.id) && <button onClick={() => setIsEditing(false)} className="flex-1 py-1.5 bg-[#EEF1F0] text-[var(--color-ink-muted)] font-bold text-[10px] rounded-lg hover:bg-[#E1E7E4] transition">取消</button>}
@@ -190,6 +203,12 @@ function AccommodationCell({ day, data, tripId }: { day: number, data?: TripAcco
        ) : (
          <div className="flex flex-col gap-1 mt-1">
            <h4 className="font-bold text-[13px] text-[var(--color-ink)] leading-tight mb-1">{data?.name}</h4>
+           {(data?.check_in || data?.check_out) && (
+             <p className="text-[10px] text-indigo-500 font-bold">
+               {data?.check_in && `入住 ${data.check_in.substring(0, 5)}`}{data?.check_in && data?.check_out && ' ・ '}{data?.check_out && `退房 ${data.check_out.substring(0, 5)}`}
+             </p>
+           )}
+           {data?.note && <p className="text-[10px] text-[var(--color-ink-muted)] leading-relaxed whitespace-pre-wrap">{data.note}</p>}
            {data?.map_url && <a href={data.map_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1 bg-white p-1.5 rounded border border-indigo-50 shadow-sm"><Map className="w-3 h-3"/> 地圖導航</a>}
            {data?.booking_url && <a href={data.booking_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-orange-500 hover:text-orange-600 font-medium flex items-center gap-1 bg-white p-1.5 rounded border border-orange-50 shadow-sm"><LinkIcon className="w-3 h-3"/> 訂房資訊</a>}
          </div>

@@ -1,5 +1,14 @@
 import { supabase } from '@/lib/supabase/client';
 
+export interface AccommodationFields {
+  name: string;
+  map_url: string;
+  booking_url: string;
+  check_in: string | null;   // "15:00" 或 null
+  check_out: string | null;
+  note: string | null;
+}
+
 export const planApi = {
   listItinerary: (tripId: string) =>
     supabase.from('trip_itinerary').select('*').eq('trip_id', tripId).order('start_time'),
@@ -26,8 +35,8 @@ export const planApi = {
   removeBucket: (id: string) =>
     supabase.from('trip_bucket_list').delete().eq('id', id),
 
-  insertAccommodation: (row: { trip_id: string | undefined; day: number; name: string; map_url: string; booking_url: string }) =>
+  insertAccommodation: (row: AccommodationFields & { trip_id: string | undefined; day: number }) =>
     supabase.from('trip_accommodations').insert([row]),
-  updateAccommodation: (id: string, data: { name: string; map_url: string; booking_url: string }) =>
+  updateAccommodation: (id: string, data: AccommodationFields) =>
     supabase.from('trip_accommodations').update(data).eq('id', id),
 };

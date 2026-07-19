@@ -25,9 +25,6 @@ export const tripsApi = {
   remove: (id: string) =>
     supabase.from('trips').delete().eq('id', id),
 
-  insertItinerary: (rows: Record<string, unknown>[]) =>
-    supabase.from('trip_itinerary').insert(rows),
-
   // 上傳封面到 Supabase Storage，回傳公開網址
   uploadCover: async (file: File): Promise<string> => {
     const ext = file.name.split('.').pop();

@@ -210,12 +210,16 @@ export function useUpdateBucketPlace(tripId: string | undefined) {
 export function useSaveAccommodation(tripId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { id: string | null; day: number; name: string; mapUrl: string; bookingUrl: string }) => {
+    mutationFn: async (vars: { id: string | null; day: number; name: string; mapUrl: string; bookingUrl: string; checkIn: string; checkOut: string; note: string }) => {
+      const fields = {
+        name: vars.name, map_url: vars.mapUrl, booking_url: vars.bookingUrl,
+        check_in: vars.checkIn || null, check_out: vars.checkOut || null, note: vars.note || null,
+      };
       if (vars.id) {
-        const { error } = await planApi.updateAccommodation(vars.id, { name: vars.name, map_url: vars.mapUrl, booking_url: vars.bookingUrl });
+        const { error } = await planApi.updateAccommodation(vars.id, fields);
         if (error) throw error;
       } else {
-        const { error } = await planApi.insertAccommodation({ trip_id: tripId, day: vars.day, name: vars.name, map_url: vars.mapUrl, booking_url: vars.bookingUrl });
+        const { error } = await planApi.insertAccommodation({ trip_id: tripId, day: vars.day, ...fields });
         if (error) throw error;
       }
     },

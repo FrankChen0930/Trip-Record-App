@@ -24,6 +24,8 @@ export interface ItineraryItem {
   lat?: number | null;       // P5a: 地圖座標
   lng?: number | null;
   place_id?: string | null;  // P5b: Google Places ID
+  // 營業時間快取（第一次顯示時打 Google 後永久存 DB；空陣列＝查過但該地點沒資訊）
+  opening_hours?: { weekdayDescriptions: string[] } | null;
   member_statuses?: MemberTicketStatus[];
 }
 
@@ -95,7 +97,9 @@ export interface TripAccommodation {
   name: string;
   map_url?: string;
   booking_url?: string;
-  note?: string;
+  note?: string | null;       // 備註 / 注意事項
+  check_in?: string | null;   // 入住時間 (time, "15:00:00")
+  check_out?: string | null;  // 退房時間
   created_at: string;
 }
 
